@@ -27,6 +27,7 @@
     
     /* 문제지 출력 스타일 */
     .paper { background: white; padding: 40px; border-radius: 8px; max-width: 800px; margin: 20px auto 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    .paper-instruction { font-size: 20px; font-weight: bold; color: #1e293b; margin-top: 0; margin-bottom: 25px; padding-bottom: 12px; border-bottom: 2px solid #2563eb; }
     .q-card { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #e2e8f0; }
     .q-num { font-weight: bold; color: #2563eb; margin-bottom: 8px; }
     .q-text { font-size: 16px; line-height: 1.6; margin-bottom: 10px; }
@@ -59,7 +60,6 @@
       <span id="authStatusText" style="font-size:13px; margin-top:5px; display:block; color:#ca8a04;">* 등록된 번호 입력 시 문제 생성이 가능합니다.</span>
     </div>
 
-    <!-- DB에서 불러온 펼침 목록 (Select Box) -->
     <div id="genFormSection" style="opacity: 0.5; pointer-events: none;">
       <div class="row form-group">
         <div class="col">
@@ -195,7 +195,6 @@
       event.target.classList.add('active');
     }
 
-    // 1. 핸드폰 뒷자리 검증 및 드롭다운 로드
     function verifyUserPin() {
       const pin = document.getElementById('userPhonePin').value.trim();
       if (pin.length !== 4) return alert("핸드폰 번호 뒷자리 4자리를 입력해 주세요.");
@@ -219,7 +218,6 @@
       }).catch(err => alert("인증 오류: " + err.message));
     }
 
-    // 2. DB에서 전체 조회하여 드롭다운 생성
     async function loadDropdownsFromDB() {
       try {
         const snapshot = await db.collection("sentences").get();
@@ -235,7 +233,10 @@
           if (!dbSentenceMap[tb]) dbSentenceMap[tb] = {};
           if (!dbSentenceMap[tb][lesson]) dbSentenceMap[tb][lesson] = [];
           
-          dbSentenceMap[tb][lesson].push({ num: num, eng: eng });
+          // 중복 문장번호 제거
+          if (!dbSentenceMap[tb][lesson].some(s => s.num === num)) {
+            dbSentenceMap[tb][lesson].push({ num: num, eng: eng });
+          }
         });
 
         const genTbSelect = document.getElementById('genTb');
@@ -243,8 +244,8 @@
         const tbKeys = Object.keys(dbSentenceMap);
 
         if (tbKeys.length === 0) {
-          genTbSelect.innerHTML = "<option value=''>등록된 교과서가 없습니다 (관리자 탭에서 지문을 추가하세요)</option>";
-          document.getElementById('authStatusText').innerText = "✅ 인증 성공! (DB에 지문을 먼저 저장해야 펼침 목록이 나타납니다)";
+          genTbSelect.innerHTML = "<option value=''>등록된 교과서가 없습니다</option>";
+          document.getElementById('authStatusText').innerText = "✅ 인증 성공! (DB에 지문을 먼저 저장해 주세요)";
           return;
         }
 
@@ -394,7 +395,6 @@
       }
     }
 
-    // 인덱스 오류가 발생하지 않도록 자바스크립트 내 필터링으로 수정된 함수
     function fetchAndGenerate() {
       if (!isPinVerified) return alert("먼저 핸드폰 번호 뒷자리 인증을 완료해 주세요.");
 
@@ -408,19 +408,24 @@
         return alert("선택된 지문 데이터가 없거나 올바르지 않습니다.");
       }
 
-      // 인덱스 에러 방지: DB에서는 교과서와 과만 검색하고 범위 필터링은 자바스크립트에서 수행
       db.collection("sentences")
         .where("tbCode", "==", tb)
         .where("lesson", "==", lesson)
         .get()
         .then(snapshot => {
-          let list = [];
+          let map = new Map();
+          
           snapshot.forEach(doc => {
             const data = doc.data();
             if (data.num >= start && data.num <= end) {
-              list.push(data);
+              // 중복되는 문장번호가 있다면 한 번만 포함
+              if (!map.has(data.num)) {
+                map.set(data.num, data);
+              }
             }
           });
+
+          let list = Array.from(map.values());
           list.sort((a, b) => a.num - b.num);
           renderPaper(list, qType);
         })
@@ -439,22 +444,36 @@
         return;
       }
 
+      // 지시문 매핑 (상단에 1회만 표시)
+      const instructions = {
+        "1": "다음 문장을 해석하시오.",
+        "2": "다음 우리말을 영작하시오.",
+        "3": "주어진 단어를 올바르게 배열하시오.",
+        "4": "다음 문장의 빈칸에 알맞은 단어를 쓰시오."
+      };
+
+      const mainHeader = document.createElement('div');
+      mainHeader.className = "paper-instruction";
+      mainHeader.innerText = instructions[qType] || "";
+      paper.appendChild(mainHeader);
+
       dataList.forEach((item, idx) => {
         const card = document.createElement('div');
         card.className = "q-card";
         let html = `<div class="q-num">Q${idx + 1}. [문장 ${item.num}]</div>`;
 
         if (qType === "1") {
-          html += `<div class="q-text">다음 문장을 해석하시오.<br><b>${item.eng}</b></div><div class="ans-space"></div>`;
+          html += `<div class="q-text"><b>${item.eng}</b></div><div class="ans-space"></div>`;
         } else if (qType === "2") {
-          html += `<div class="q-text">다음 우리말을 영작하시오.<br><b>${item.kor}</b></div><div class="ans-space"></div>`;
+          html += `<div class="q-text"><b>${item.kor}</b></div><div class="ans-space"></div>`;
         } else if (qType === "3") {
           const words = shuffle(item.eng.replace(/[.,!?]/g, '').split(" ")).join(" / ");
-          html += `<div class="q-text">주어진 단어를 올바르게 배열하시오. (${item.kor})</div><div class="word-box">[ ${words} ]</div><div class="ans-space"></div>`;
+          html += `<div class="q-text" style="font-size:14px; color:#666; margin-bottom:5px;">뜻: ${item.kor}</div>
+                   <div class="word-box">[ ${words} ]</div><div class="ans-space"></div>`;
         } else if (qType === "4") {
           const words = item.eng.split(" ");
           const blanked = words.map(w => w.length > 3 && Math.random() > 0.4 ? "_______" : w).join(" ");
-          html += `<div class="q-text">빈칸에 알맞은 단어를 쓰시오.<br><b>${blanked}</b></div><div style="font-size:14px; color:#666;">(뜻: ${item.kor})</div><div class="ans-space"></div>`;
+          html += `<div class="q-text"><b>${blanked}</b></div><div style="font-size:14px; color:#666;">(뜻: ${item.kor})</div><div class="ans-space"></div>`;
         }
 
         card.innerHTML = html;
