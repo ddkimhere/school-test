@@ -230,7 +230,7 @@
         예: <code>apple&nbsp;&nbsp;&nbsp;&nbsp;사과</code> / <code>take photos&nbsp;&nbsp;&nbsp;&nbsp;사진을 찍다</code><br>
         엑셀의 TAB 구분을 우선 인식하고, 일반 텍스트는 한글 뜻이 시작되는 위치를 자동 인식합니다.<br>
         <b>인식하지 못한 줄이 있으면 저장하지 않고 어떤 줄인지 알려줍니다.</b><br>
-        <b>같은 교과서/과에 다시 저장하면 시험에는 가장 마지막에 저장한 단어 묶음만 사용됩니다.</b>
+        <b>같은 교과서/과에 다시 저장하면 기존 단어는 제거되고, 방금 저장한 단어로 교체됩니다.</b>
       </div>
       <div class="row form-group">
         <div class="col"><label>교과서 코드</label><input type="text" id="dbWordTb" value="동아_윤_2"></div>
@@ -244,7 +244,7 @@
           붙여넣으면 인식된 단어 수가 표시됩니다.
         </div>
       </div>
-      <button class="btn-submit" style="background:#0284c7;" onclick="saveWordsToFirebase()">[단어 DB 저장]</button>
+      <button id="saveWordsBtn" class="btn-submit" style="background:#0284c7;" onclick="saveWordsToFirebase()">[단어 DB 저장 - 기존 데이터 교체]</button>
     </div>
   </div>
 
@@ -805,6 +805,7 @@
       const tb = document.getElementById('dbWordTb').value.trim();
       const lesson = parseInt(document.getElementById('dbWordLesson').value);
       const startNum = parseInt(document.getElementById('dbWordStartNum').value) || 1;
+      const saveBtn = document.getElementById('saveWordsBtn');
 
       if (!tb || isNaN(lesson)) {
         return alert("교과서 코드와 과 번호를 입력해 주세요.");
@@ -816,7 +817,6 @@
         return alert("단어 목록을 붙여넣어 주세요.");
       }
 
-      // 일부만 저장되는 문제를 막기 위해, 인식 실패가 있으면 저장 자체를 중단
       if (failed.length > 0) {
         const examples = failed
           .slice(0, 8)
@@ -831,15 +831,43 @@
         );
       }
 
-      try {
-        // 이번 저장 전체를 하나의 '최신 묶음'으로 식별하기 위한 ID
-        const importId = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+      // 같은 영어+뜻이 입력 안에서 완전히 중복되면 1개만 저장
+      const seen = new Set();
+      const uniqueParsed = parsed.filter(item => {
+        const key = `${item.word.trim().toLowerCase()}\u0000${item.meaning.trim()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
 
-        // 많은 단어도 안정적으로 저장되도록 여러 묶음으로 저장
+      if (uniqueParsed.length === 0) {
+        return alert("저장할 단어가 없습니다.");
+      }
+
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerText = "저장 중... 잠시만 기다려 주세요";
+        saveBtn.style.opacity = "0.65";
+        saveBtn.style.cursor = "not-allowed";
+      }
+
+      try {
+        // 1. 현재 같은 교과서 + 같은 과에 존재하는 '기존 문서'를 먼저 기억한다.
+        //    새 저장이 실패하면 기존 데이터를 지우지 않기 위해 삭제는 나중에 한다.
+        const oldSnapshot = await db.collection("words")
+          .where("tbCode", "==", tb)
+          .where("lesson", "==", lesson)
+          .get();
+
+        const oldDocRefs = [];
+        oldSnapshot.forEach(doc => oldDocRefs.push(doc.ref));
+
+        // 2. 새 데이터 전체 저장
+        const importId = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
         const chunkSize = 400;
 
-        for (let offset = 0; offset < parsed.length; offset += chunkSize) {
-          const chunk = parsed.slice(offset, offset + chunkSize);
+        for (let offset = 0; offset < uniqueParsed.length; offset += chunkSize) {
+          const chunk = uniqueParsed.slice(offset, offset + chunkSize);
           const batch = db.batch();
 
           chunk.forEach((item, idx) => {
@@ -852,7 +880,7 @@
               num: startNum + globalIndex,
               word: item.word,
               meaning: item.meaning,
-              importId: importId,
+              importId,
               importSavedAt: firebase.firestore.FieldValue.serverTimestamp(),
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
@@ -861,16 +889,42 @@
           await batch.commit();
         }
 
-        document.getElementById('dbWordStartNum').value = startNum + parsed.length;
+        // 3. 새 데이터 저장이 모두 성공한 뒤에만 기존 데이터 삭제
+        for (let offset = 0; offset < oldDocRefs.length; offset += chunkSize) {
+          const chunk = oldDocRefs.slice(offset, offset + chunkSize);
+          const batch = db.batch();
+
+          chunk.forEach(ref => batch.delete(ref));
+          await batch.commit();
+        }
+
+        document.getElementById('dbWordStartNum').value = startNum + uniqueParsed.length;
         document.getElementById('dbWords').value = "";
         previewWordImport();
 
-        // 저장 직후 단어 목록을 다시 읽어서 화면에 바로 반영
+        // 화면 데이터도 DB에서 다시 불러오기
         await loadDropdownsFromDB();
 
-        alert(`✅ 총 ${parsed.length}개 단어가 저장되었습니다.\n이제 이 교과서/과에서는 방금 저장한 단어 묶음만 시험에 사용됩니다.`);
+        const duplicateRemoved = parsed.length - uniqueParsed.length;
+        let msg = `✅ ${tb} ${lesson}과 단어를 새 데이터 ${uniqueParsed.length}개로 교체했습니다.`;
+        if (oldDocRefs.length > 0) {
+          msg += `\n기존 데이터 ${oldDocRefs.length}개는 삭제했습니다.`;
+        }
+        if (duplicateRemoved > 0) {
+          msg += `\n입력 중 완전히 같은 중복 ${duplicateRemoved}개는 제외했습니다.`;
+        }
+
+        alert(msg);
+
       } catch (err) {
-        alert("저장 실패: " + err.message);
+        alert("저장/교체 실패: " + err.message);
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerText = "[단어 DB 저장 - 기존 데이터 교체]";
+          saveBtn.style.opacity = "1";
+          saveBtn.style.cursor = "pointer";
+        }
       }
     }
 
