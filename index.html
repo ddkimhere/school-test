@@ -27,24 +27,29 @@
     
     /* 문제지 출력 및 인쇄 스타일 */
     .paper { background: white; padding: 40px; border-radius: 8px; max-width: 800px; margin: 20px auto 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); position: relative; }
-    .paper-header-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 25px; }
+    .paper-header-row { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #2563eb; padding-bottom: 15px; margin-bottom: 25px; }
     .paper-instruction { font-size: 20px; font-weight: bold; color: #1e293b; margin: 0; }
-    .btn-print { background: #059669; color: white; font-weight: bold; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+    
+    /* 시험지 상단 이름/날짜 영역 */
+    .student-info-box { display: flex; gap: 15px; font-size: 14px; font-weight: bold; color: #334155; align-items: center; }
+    .info-item { border-bottom: 1px solid #64748b; padding: 0 10px 4px 10px; display: inline-block; }
+
+    .btn-print { background: #059669; color: white; font-weight: bold; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-bottom: 10px; float: right; }
     .btn-print:hover { background: #047857; }
     .q-card { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #e2e8f0; page-break-inside: avoid; }
-    .q-num { font-weight: bold; color: #2563eb; margin-bottom: 8px; }
     .q-text { font-size: 16px; line-height: 1.6; margin-bottom: 10px; }
     .ans-space { border-bottom: 1px solid #94a3b8; height: 35px; margin-top: 10px; }
     .word-box { background: #f1f5f9; padding: 10px; border-radius: 6px; font-family: monospace; display: inline-block; margin-bottom: 10px; font-weight: bold; }
 
-    /* 인쇄 모드 전용 CSS (웹 페이지 요소 숨기기) */
+    /* 인쇄 모드 전용 CSS */
     @media print {
       body { background: white; padding: 0; }
       h1, .tabs, .auth-box, #genFormSection, .btn-print, #dbTab { display: none !important; }
       .panel { padding: 0; box-shadow: none; }
       .paper { box-shadow: none; padding: 0; max-width: 100%; margin: 0; }
       .paper-header-row { border-bottom-color: #000; }
-      .q-num { color: #000; }
+      .student-info-box { color: #000; }
+      .info-item { border-bottom-color: #000; }
     }
   </style>
 
@@ -247,7 +252,6 @@
           if (!dbSentenceMap[tb]) dbSentenceMap[tb] = {};
           if (!dbSentenceMap[tb][lesson]) dbSentenceMap[tb][lesson] = [];
           
-          // 중복 문장 번호 체크하여 1개만 매핑에 등록
           if (!dbSentenceMap[tb][lesson].some(s => s.num === num)) {
             dbSentenceMap[tb][lesson].push({ num: num, eng: eng });
           }
@@ -314,7 +318,6 @@
       const sentences = dbSentenceMap[selectedTb][selectedLesson];
       sentences.sort((a, b) => a.num - b.num);
 
-      // 드롭다운 중복 노출 방지 처리
       const addedNums = new Set();
 
       sentences.forEach(item => {
@@ -471,7 +474,19 @@
         "4": "다음 문장의 빈칸에 알맞은 단어를 쓰시오."
       };
 
-      // 시험지 최상단 영역 (지시문 + 인쇄 버튼)
+      // 1. 최상단 인쇄 버튼 전용 행
+      const topBar = document.createElement('div');
+      topBar.style.overflow = "hidden";
+      topBar.style.marginBottom = "10px";
+
+      const printBtn = document.createElement('button');
+      printBtn.className = "btn-print";
+      printBtn.innerText = "🖨️ 시험지 인쇄하기";
+      printBtn.onclick = () => window.print();
+      topBar.appendChild(printBtn);
+      paper.appendChild(topBar);
+
+      // 2. 시험지 헤더 영역 (지시문 + 날짜/이름/점수 입력란)
       const headerRow = document.createElement('div');
       headerRow.className = "paper-header-row";
       
@@ -479,32 +494,38 @@
       titleDiv.className = "paper-instruction";
       titleDiv.innerText = instructions[qType] || "";
 
-      const printBtn = document.createElement('button');
-      printBtn.className = "btn-print";
-      printBtn.innerText = "🖨️ 시험지 인쇄하기";
-      printBtn.onclick = () => window.print();
+      const studentInfo = document.createElement('div');
+      studentInfo.className = "student-info-box";
+      studentInfo.innerHTML = `
+        <span>날짜: <span class="info-item" style="width: 100px;"></span></span>
+        <span>이름: <span class="info-item" style="width: 90px;"></span></span>
+        <span>점수: <span class="info-item" style="width: 60px;"></span></span>
+      `;
 
       headerRow.appendChild(titleDiv);
-      headerRow.appendChild(printBtn);
+      headerRow.appendChild(studentInfo);
       paper.appendChild(headerRow);
 
+      // 3. 문제 목록 생성 (Q1. [문장 1] 형태 제거 -> 1. 문장 형태로 변경)
       dataList.forEach((item, idx) => {
         const card = document.createElement('div');
         card.className = "q-card";
-        let html = `<div class="q-num">Q${idx + 1}. [문장 ${item.num}]</div>`;
+
+        const qNumberStr = `${idx + 1}. `;
+        let html = "";
 
         if (qType === "1") {
-          html += `<div class="q-text"><b>${item.eng}</b></div><div class="ans-space"></div>`;
+          html = `<div class="q-text"><b>${qNumberStr}${item.eng}</b></div><div class="ans-space"></div>`;
         } else if (qType === "2") {
-          html += `<div class="q-text"><b>${item.kor}</b></div><div class="ans-space"></div>`;
+          html = `<div class="q-text"><b>${qNumberStr}${item.kor}</b></div><div class="ans-space"></div>`;
         } else if (qType === "3") {
           const words = shuffle(item.eng.replace(/[.,!?]/g, '').split(" ")).join(" / ");
-          html += `<div class="q-text" style="font-size:14px; color:#666; margin-bottom:5px;">뜻: ${item.kor}</div>
-                   <div class="word-box">[ ${words} ]</div><div class="ans-space"></div>`;
+          html = `<div class="q-text" style="font-size:14px; color:#666; margin-bottom:5px;">${qNumberStr}뜻: ${item.kor}</div>
+                  <div class="word-box">[ ${words} ]</div><div class="ans-space"></div>`;
         } else if (qType === "4") {
           const words = item.eng.split(" ");
           const blanked = words.map(w => w.length > 3 && Math.random() > 0.4 ? "_______" : w).join(" ");
-          html += `<div class="q-text"><b>${blanked}</b></div><div style="font-size:14px; color:#666;">(뜻: ${item.kor})</div><div class="ans-space"></div>`;
+          html = `<div class="q-text"><b>${qNumberStr}${blanked}</b></div><div style="font-size:14px; color:#666;">(뜻: ${item.kor})</div><div class="ans-space"></div>`;
         }
 
         card.innerHTML = html;
