@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>클라우드 영어 지문 문제 은행</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f4f6f9; color: #333; }
+    h1 { margin-top: 0; color: #1e293b; }
+    .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #cbd5e1; }
+    .tab-btn { padding: 12px 24px; font-size: 16px; font-weight: bold; border: none; background: #e2e8f0; cursor: pointer; border-radius: 8px 8px 0 0; }
+    .tab-btn.active { background: #2563eb; color: white; }
+    .panel { display: none; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .panel.active { display: block; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-weight: bold; margin-bottom: 5px; color: #475569; }
+    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 15px; }
+    textarea { height: 70px; resize: vertical; }
+    .row { display: flex; gap: 15px; }
+    .col { flex: 1; }
+    button.btn-submit { background: #2563eb; color: white; font-weight: bold; padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; width: 100%; font-size: 16px; }
+    button.btn-submit:hover { background: #1d4ed8; }
+    .admin-bar { background: #e0f2fe; border: 1px solid #bae6fd; padding: 12px 20px; border-radius: 6px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+    
+    /* 문제지 출력 스타일 */
+    .paper { background: white; padding: 40px; border-radius: 8px; max-width: 800px; margin: 20px auto 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    .q-card { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #e2e8f0; }
+    .q-num { font-weight: bold; color: #2563eb; margin-bottom: 8px; }
+    .q-text { font-size: 16px; line-height: 1.6; margin-bottom: 10px; }
+    .ans-space { border-bottom: 1px solid #94a3b8; height: 35px; margin-top: 10px; }
+    .word-box { background: #f1f5f9; padding: 10px; border-radius: 6px; font-family: monospace; display: inline-block; margin-bottom: 10px; font-weight: bold; }
+  </style>
+
+  <!-- 파이어베이스 SDK (v9 호환 모드) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <h1>📚 파이어베이스 연동 영어 문제 자동 생성기</h1>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('genTab')">📝 문제지 생성하기 (누구나 가능)</button>
+    <button class="tab-btn" onclick="switchTab('dbTab')">⚙️ 지문 DB 관리 (선생님 전용)</button>
+  </div>
+
+  <!-- 1. 문제지 생성 탭 (로그인 불필요) -->
+  <div id="genTab" class="panel active">
+    <div class="row form-group">
+      <div class="col">
+        <label>교과서 코드 (예: 동아_윤_2)</label>
+        <input type="text" id="genTb" value="동아_윤_2">
+      </div>
+      <div class="col">
+        <label>과 번호</label>
+        <input type="number" id="genLesson" value="1">
+      </div>
+    </div>
+    <div class="row form-group">
+      <div class="col">
+        <label>시작 문장 번호</label>
+        <input type="number" id="genStart" value="1">
+      </div>
+      <div class="col">
+        <label>끝 문장 번호</label>
+        <input type="number" id="genEnd" value="5">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>문제 유형</label>
+      <select id="genType">
+        <option value="1">1. 해석하기 (Eng → Kor)</option>
+        <option value="2">2. 영어쓰기 (Kor → Eng)</option>
+        <option value="3">3. 단어 배열하기</option>
+        <option value="4">4. 빈칸 채우기</option>
+      </select>
+    </div>
+    <button class="btn-submit" onclick="fetchAndGenerate()">구글 DB에서 불러와 문제지 만들기</button>
+
+    <div class="paper" id="paperArea" style="display:none;"></div>
+  </div>
+
+  <!-- 2. 지문 DB 관리 탭 (로그인 필요) -->
+  <div id="dbTab" class="panel">
+    <!-- 로그인 전 화면 -->
+    <div id="loginSection">
+      <h3>🔒 관리자 로그인</h3>
+      <p style="color:#64748b; font-size:14px;">지문을 등록하려면 선생님 계정으로 로그인해 주세요.</p>
+      <div class="form-group">
+        <label>이메일</label>
+        <input type="email" id="loginEmail" placeholder="admin@example.com">
+      </div>
+      <div class="form-group">
+        <label>비밀번호</label>
+        <input type="password" id="loginPw">
+      </div>
+      <button class="btn-submit" onclick="handleLogin()">로그인</button>
+      <p style="margin-top:10px; font-size:13px; color:#888;">* 처음이신가요? <a href="#" onclick="handleSignUp()">이 계정으로 관리자 회원가입하기</a></p>
+    </div>
+
+    <!-- 로그인 후 화면 (지문 등록 폼) -->
+    <div id="adminSection" style="display:none;">
+      <div class="admin-bar">
+        <span>👤 <b id="userEmailText"></b> 님 로그인됨</span>
+        <button style="padding:6px 12px; background:#ef4444; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="handleLogout()">로그아웃</button>
+      </div>
+
+      <h3>➕ 구글 클라우드 DB에 새 문장 추가</h3>
+      <div class="row form-group">
+        <div class="col"><label>교과서 코드</label><input type="text" id="dbTb" placeholder="예: 동아_윤_2"></div>
+        <div class="col"><label>과 번호</label><input type="number" id="dbLesson" value="1"></div>
+        <div class="col"><label>문장 번호</label><input type="number" id="dbNum" value="1"></div>
+      </div>
+      <div class="form-group">
+        <label>영어 문장</label>
+        <textarea id="dbEng" placeholder="Somin is a 15-year-old middle school student in Korea."></textarea>
+      </div>
+      <div class="form-group">
+        <label>한글 해석</label>
+        <textarea id="dbKor" placeholder="소민이는 한국에 사는 15세 중학생입니다."></textarea>
+      </div>
+      <button class="btn-submit" style="background:#059669;" onclick="saveToFirebase()">DB에 저장하기</button>
+    </div>
+  </div>
+
+  <script>
+    // ⚠️ [필수] 본인의 파이어베이스 설정 정보 입력!
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    // 로그인 상태 감지
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('adminSection').style.display = 'block';
+        document.getElementById('userEmailText').innerText = user.email;
+      } else {
+        document.getElementById('loginSection').style.display = 'block';
+        document.getElementById('adminSection').style.display = 'none';
+      }
+    });
+
+    // 탭 전환
+    function switchTab(tabId) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    // 관리자 가입/로그인/로그아웃
+    function handleSignUp() {
+      const email = document.getElementById('loginEmail').value;
+      const pw = document.getElementById('loginPw').value;
+      auth.createUserWithEmailAndPassword(email, pw)
+        .then(() => alert("관리자 계정이 생성되었습니다!"))
+        .catch(err => alert("가입 실패: " + err.message));
+    }
+
+    function handleLogin() {
+      const email = document.getElementById('loginEmail').value;
+      const pw = document.getElementById('loginPw').value;
+      auth.signInWithEmailAndPassword(email, pw)
+        .catch(err => alert("로그인 실패: " + err.message));
+    }
+
+    function handleLogout() {
+      auth.signOut();
+    }
+
+    // 지문 저장 (로그인된 상태에서만 작동)
+    function saveToFirebase() {
+      const tb = document.getElementById('dbTb').value.trim();
+      const lesson = parseInt(document.getElementById('dbLesson').value);
+      const num = parseInt(document.getElementById('dbNum').value);
+      const eng = document.getElementById('dbEng').value.trim();
+      const kor = document.getElementById('dbKor').value.trim();
+
+      if (!tb || !eng || !kor) return alert("모든 항목을 입력해 주세요.");
+
+      db.collection("sentences").add({
+        tbCode: tb, lesson: lesson, num: num, eng: eng, kor: kor,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        alert(`${tb} ${lesson}과 ${num}번 문장 저장 완료!`);
+        document.getElementById('dbNum').value = num + 1;
+        document.getElementById('dbEng').value = "";
+        document.getElementById('dbKor').value = "";
+      }).catch(err => alert("저장 실패 (권한 없음): " + err.message));
+    }
+
+    // 문제지 생성 (로그인 없이 누구나 가능)
+    function fetchAndGenerate() {
+      const tb = document.getElementById('genTb').value.trim();
+      const lesson = parseInt(document.getElementById('genLesson').value);
+      const start = parseInt(document.getElementById('genStart').value);
+      const end = parseInt(document.getElementById('genEnd').value);
+      const qType = document.getElementById('genType').value;
+
+      db.collection("sentences")
+        .where("tbCode", "==", tb)
+        .where("lesson", "==", lesson)
+        .where("num", ">=", start)
+        .where("num", "<=", end)
+        .get()
+        .then(snapshot => {
+          let list = [];
+          snapshot.forEach(doc => list.push(doc.data()));
+          list.sort((a, b) => a.num - b.num);
+          renderPaper(list, qType);
+        })
+        .catch(err => alert("조회 오류: " + err.message));
+    }
+
+    function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+    function renderPaper(dataList, qType) {
+      const paper = document.getElementById('paperArea');
+      paper.style.display = "block";
+      paper.innerHTML = "";
+
+      if (dataList.length === 0) {
+        paper.innerHTML = "<p style='text-align:center;'>해당 조건의 지문 데이터가 없습니다.</p>";
+        return;
+      }
+
+      dataList.forEach((item, idx) => {
+        const card = document.createElement('div');
+        card.className = "q-card";
+        let html = `<div class="q-num">Q${idx + 1}. [문장 ${item.num}]</div>`;
+
+        if (qType === "1") {
+          html += `<div class="q-text">다음 문장을 해석하시오.<br><b>${item.eng}</b></div><div class="ans-space"></div>`;
+        } else if (qType === "2") {
+          html += `<div class="q-text">다음 우리말을 영작하시오.<br><b>${item.kor}</b></div><div class="ans-space"></div>`;
+        } else if (qType === "3") {
+          const words = shuffle(item.eng.replace(/[.,!?]/g, '').split(" ")).join(" / ");
+          html += `<div class="q-text">주어진 단어를 올바르게 배열하시오. (${item.kor})</div><div class="word-box">[ ${words} ]</div><div class="ans-space"></div>`;
+        } else if (qType === "4") {
+          const words = item.eng.split(" ");
+          const blanked = words.map(w => w.length > 3 && Math.random() > 0.4 ? "_______" : w).join(" ");
+          html += `<div class="q-text">빈칸에 알맞은 단어를 쓰시오.<br><b>${blanked}</b></div><div style="font-size:14px; color:#666;">(뜻: ${item.kor})</div><div class="ans-space"></div>`;
+        }
+
+        card.innerHTML = html;
+        paper.appendChild(card);
+      });
+    }
+  </script>
+</body>
+</html>
