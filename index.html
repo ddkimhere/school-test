@@ -22,6 +22,7 @@
     button.btn-submit { background: #2563eb; color: white; font-weight: bold; padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; width: 100%; font-size: 16px; }
     button.btn-submit:hover { background: #1d4ed8; }
     .admin-bar { background: #e0f2fe; border: 1px solid #bae6fd; padding: 12px 20px; border-radius: 6px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+    .auth-box { background: #fffbe3; border: 1px solid #fde047; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
     
     /* 문제지 출력 스타일 */
     .paper { background: white; padding: 40px; border-radius: 8px; max-width: 800px; margin: 20px auto 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
@@ -32,57 +33,71 @@
     .word-box { background: #f1f5f9; padding: 10px; border-radius: 6px; font-family: monospace; display: inline-block; margin-bottom: 10px; font-weight: bold; }
   </style>
 
-  <!-- 파이어베이스 SDK (v9 호환 모드) -->
+  <!-- 파이어베이스 SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
-  <h1>📚 파이어베이스 연동 영어 문제 자동 생성기</h1>
+  <h1>📚 클라우드 영어 문제 자동 생성기</h1>
 
   <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('genTab')">📝 문제지 생성하기 (누구나 가능)</button>
+    <button class="tab-btn active" onclick="switchTab('genTab')">📝 문제지 생성하기 (인증 사용자)</button>
     <button class="tab-btn" onclick="switchTab('dbTab')">⚙️ 지문 DB 관리 (선생님 전용)</button>
   </div>
 
-  <!-- 1. 문제지 생성 탭 (로그인 불필요) -->
+  <!-- 1. 문제지 생성 탭 (핸드폰 뒷자리 인증 필요) -->
   <div id="genTab" class="panel active">
-    <div class="row form-group">
-      <div class="col">
-        <label>교과서 코드 (예: 동아_윤_2)</label>
-        <input type="text" id="genTb" value="동아_윤_2">
+    
+    <!-- 사용자 인증 입력창 -->
+    <div class="auth-box">
+      <label>📱 사용자 인증 (핸드폰 번호 뒷자리 4자리 입력)</label>
+      <div style="display:flex; gap:10px;">
+        <input type="password" id="userPhonePin" placeholder="예: 1234" maxlength="4" style="width:150px;">
+        <button style="padding:10px 15px; background:#eab308; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="verifyUserPin()">인증 확인</button>
       </div>
-      <div class="col">
-        <label>과 번호</label>
-        <input type="number" id="genLesson" value="1">
-      </div>
+      <span id="authStatusText" style="font-size:13px; margin-top:5px; display:block; color:#ca8a04;">* 등록된 번호 입력 시 문제 생성이 가능합니다.</span>
     </div>
-    <div class="row form-group">
-      <div class="col">
-        <label>시작 문장 번호</label>
-        <input type="number" id="genStart" value="1">
+
+    <!-- 문제 생성 조건 입력 폼 (인증 전에는 숨김) -->
+    <div id="genFormSection" style="opacity: 0.5; pointer-events: none;">
+      <div class="row form-group">
+        <div class="col">
+          <label>교과서 코드 (예: 동아_윤_2)</label>
+          <input type="text" id="genTb" value="동아_윤_2">
+        </div>
+        <div class="col">
+          <label>과 번호</label>
+          <input type="number" id="genLesson" value="1">
+        </div>
       </div>
-      <div class="col">
-        <label>끝 문장 번호</label>
-        <input type="number" id="genEnd" value="5">
+      <div class="row form-group">
+        <div class="col">
+          <label>시작 문장 번호</label>
+          <input type="number" id="genStart" value="1">
+        </div>
+        <div class="col">
+          <label>끝 문장 번호</label>
+          <input type="number" id="genEnd" value="5">
+        </div>
       </div>
+      <div class="form-group">
+        <label>문제 유형</label>
+        <select id="genType">
+          <option value="1">1. 해석하기 (Eng → Kor)</option>
+          <option value="2">2. 영어쓰기 (Kor → Eng)</option>
+          <option value="3">3. 단어 배열하기</option>
+          <option value="4">4. 빈칸 채우기</option>
+        </select>
+      </div>
+      <button class="btn-submit" onclick="fetchAndGenerate()">구글 DB에서 불러와 문제지 만들기</button>
     </div>
-    <div class="form-group">
-      <label>문제 유형</label>
-      <select id="genType">
-        <option value="1">1. 해석하기 (Eng → Kor)</option>
-        <option value="2">2. 영어쓰기 (Kor → Eng)</option>
-        <option value="3">3. 단어 배열하기</option>
-        <option value="4">4. 빈칸 채우기</option>
-      </select>
-    </div>
-    <button class="btn-submit" onclick="fetchAndGenerate()">구글 DB에서 불러와 문제지 만들기</button>
 
     <div class="paper" id="paperArea" style="display:none;"></div>
   </div>
 
-  <!-- 2. 지문 DB 관리 탭 (관리자 이메일 고정) -->
+  <!-- 2. 지문 DB 관리 탭 (관리자 전용) -->
   <div id="dbTab" class="panel">
     <!-- 로그인 전 화면 -->
     <div id="loginSection">
@@ -97,16 +112,25 @@
       </div>
       <button class="btn-submit" onclick="handleLogin()">로그인</button>
       <p style="margin-top:12px; font-size:13px; color:#666;">
-        * 최초 1회만 계정 생성이 필요합니다: 
-        <a href="#" onclick="handleSignUp()" style="color:#2563eb; font-weight:bold;">[이 이메일로 최초 가입하기]</a>
+        * 최초 1회 계정 생성: 
+        <a href="#" onclick="handleSignUp()" style="color:#2563eb; font-weight:bold;">[이 이메일로 최초 가입]</a>
       </p>
     </div>
 
-    <!-- 로그인 후 화면 (지문 등록 폼) -->
+    <!-- 로그인 후 화면 (지문 및 승인 번호 등록) -->
     <div id="adminSection" style="display:none;">
       <div class="admin-bar">
         <span>👤 관리자(<b id="userEmailText"></b>) 로그인됨</span>
         <button style="padding:6px 12px; background:#ef4444; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="handleLogout()">로그아웃</button>
+      </div>
+
+      <!-- 허용된 사용자 핸드폰 번호 관리 -->
+      <div style="background:#f8fafc; padding:15px; border:1px solid #e2e8f0; border-radius:6px; margin-bottom:20px;">
+        <h4 style="margin-top:0;">📱 허용 사용자 핸드폰 뒷자리 등록</h4>
+        <div style="display:flex; gap:10px;">
+          <input type="text" id="newAllowedPin" placeholder="뒷자리 4자리 (예: 1234)" maxlength="4" style="width:200px;">
+          <button style="padding:10px; background:#0284c7; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="addAllowedPin()">등록하기</button>
+        </div>
       </div>
 
       <h3>➕ 구글 클라우드 DB에 새 문장 추가</h3>
@@ -142,6 +166,8 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
+    let isPinVerified = false; // 인증 상태 변수
+
     // 로그인 상태 감지
     auth.onAuthStateChanged(user => {
       if (user) {
@@ -154,7 +180,6 @@
       }
     });
 
-    // 탭 전환
     function switchTab(tabId) {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -162,31 +187,60 @@
       event.target.classList.add('active');
     }
 
-    // 최초 회원가입 (최초 1회만 클릭)
+    // 1. 핸드폰 뒷자리 검증 함수
+    function verifyUserPin() {
+      const pin = document.getElementById('userPhonePin').value.trim();
+      if (pin.length !== 4) return alert("핸드폰 번호 뒷자리 4자리를 입력해 주세요.");
+
+      db.collection("allowed_users").doc(pin).get().then(doc => {
+        if (doc.exists) {
+          isPinVerified = true;
+          document.getElementById('authStatusText').innerText = "✅ 인증 성공! 문제 생성이 가능합니다.";
+          document.getElementById('authStatusText').style.color = "#16a34a";
+          document.getElementById('genFormSection').style.opacity = "1";
+          document.getElementById('genFormSection').style.pointerEvents = "auto";
+        } else {
+          isPinVerified = false;
+          document.getElementById('authStatusText').innerText = "❌ 등록되지 않은 사용자 번호입니다.";
+          document.getElementById('authStatusText').style.color = "#dc2626";
+          document.getElementById('genFormSection').style.opacity = "0.5";
+          document.getElementById('genFormSection').style.pointerEvents = "none";
+        }
+      }).catch(err => alert("인증 오류: " + err.message));
+    }
+
+    // 2. 관리자가 허용 핸드폰 번호 추가 함수
+    function addAllowedPin() {
+      const pin = document.getElementById('newAllowedPin').value.trim();
+      if (pin.length !== 4) return alert("4자리 숫자를 입력해 주세요.");
+
+      db.collection("allowed_users").doc(pin).set({
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        alert(`승인 번호 [${pin}] 번이 성공적으로 추가되었습니다.`);
+        document.getElementById('newAllowedPin').value = "";
+      }).catch(err => alert("추가 실패: " + err.message));
+    }
+
+    // 관리자 가입/로그인/로그아웃
     function handleSignUp() {
       const email = document.getElementById('loginEmail').value.trim();
       const pw = document.getElementById('loginPw').value;
-
       auth.createUserWithEmailAndPassword(email, pw)
         .then(() => alert("관리자 계정이 성공적으로 생성되었습니다!"))
         .catch(err => alert("계정 생성 오류: " + err.message));
     }
 
-    // 로그인
     function handleLogin() {
       const email = document.getElementById('loginEmail').value.trim();
       const pw = document.getElementById('loginPw').value;
-
       auth.signInWithEmailAndPassword(email, pw)
         .catch(err => alert("로그인 실패: 이메일과 비밀번호를 확인해주세요."));
     }
 
-    // 로그아웃
-    function handleLogout() {
-      auth.signOut();
-    }
+    function handleLogout() { auth.signOut(); }
 
-    // 지문 저장 (로그인 상태 전용)
+    // 지문 저장
     function saveToFirebase() {
       const tb = document.getElementById('dbTb').value.trim();
       const lesson = parseInt(document.getElementById('dbLesson').value);
@@ -207,8 +261,10 @@
       }).catch(err => alert("저장 실패: " + err.message));
     }
 
-    // 문제지 생성 (로그인 없이 가능)
+    // 문제지 생성
     function fetchAndGenerate() {
+      if (!isPinVerified) return alert("먼저 핸드폰 번호 뒷자리 인증을 완료해 주세요.");
+
       const tb = document.getElementById('genTb').value.trim();
       const lesson = parseInt(document.getElementById('genLesson').value);
       const start = parseInt(document.getElementById('genStart').value);
