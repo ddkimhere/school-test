@@ -229,7 +229,8 @@
         💡 <b>엑셀 입력:</b> 영어와 뜻을 각각 두 열에 두고 여러 줄을 한 번에 복사해서 붙여넣으세요.<br>
         예: <code>apple&nbsp;&nbsp;&nbsp;&nbsp;사과</code> / <code>take photos&nbsp;&nbsp;&nbsp;&nbsp;사진을 찍다</code><br>
         엑셀의 TAB 구분을 우선 인식하고, 일반 텍스트는 한글 뜻이 시작되는 위치를 자동 인식합니다.<br>
-        <b>인식하지 못한 줄이 있으면 저장하지 않고 어떤 줄인지 알려줍니다.</b>
+        <b>인식하지 못한 줄이 있으면 저장하지 않고 어떤 줄인지 알려줍니다.</b><br>
+        <b>같은 교과서/과에 다시 저장하면 시험에는 가장 마지막에 저장한 단어 묶음만 사용됩니다.</b>
       </div>
       <div class="row form-group">
         <div class="col"><label>교과서 코드</label><input type="text" id="dbWordTb" value="동아_윤_2"></div>
@@ -330,12 +331,88 @@
 
         const wordSnapshot = await db.collection("words").get();
         dbWordMap = {};
+
+        // 같은 교과서/과에 여러 번 저장된 경우,
+        // 가장 마지막에 저장한 "한 묶음(importId)"만 시험에 사용한다.
+        const groupedWords = {};
+
         wordSnapshot.forEach(doc => {
           const data = doc.data();
-          const { tbCode: tb, lesson, word, meaning, num = null, createdAt = null } = data;
+          const {
+            tbCode: tb,
+            lesson,
+            word,
+            meaning,
+            num = null,
+            createdAt = null,
+            importId = null,
+            importSavedAt = null
+          } = data;
+
+          if (!tb || lesson === undefined || lesson === null) return;
+
+          const key = `${tb}|||${lesson}`;
+          if (!groupedWords[key]) groupedWords[key] = [];
+
+          groupedWords[key].push({
+            word,
+            meaning,
+            num,
+            createdAt,
+            importId,
+            importSavedAt
+          });
+        });
+
+        Object.keys(groupedWords).forEach(key => {
+          const [tb, lessonStr] = key.split("|||");
+          const lesson = Number(lessonStr);
+          const allItems = groupedWords[key];
+
+          // importId가 있는 최신 저장 데이터가 하나라도 있으면,
+          // 예전 데이터(importId 없음)는 완전히 무시한다.
+          const importedItems = allItems.filter(item => item.importId);
+
+          let latestItems;
+
+          if (importedItems.length > 0) {
+            const importTimeMap = {};
+
+            importedItems.forEach(item => {
+              let t = 0;
+
+              if (item.importSavedAt) {
+                if (typeof item.importSavedAt.toMillis === "function") {
+                  t = item.importSavedAt.toMillis();
+                } else if (typeof item.importSavedAt.seconds === "number") {
+                  t = item.importSavedAt.seconds * 1000;
+                }
+              }
+
+              // serverTimestamp가 아직 반영되지 않은 순간을 대비해
+              // importId에 포함된 시간값도 보조 기준으로 사용
+              if (!t && typeof item.importId === "string") {
+                const match = item.importId.match(/^(\d+)_/);
+                if (match) t = Number(match[1]);
+              }
+
+              if (!importTimeMap[item.importId] || t > importTimeMap[item.importId]) {
+                importTimeMap[item.importId] = t;
+              }
+            });
+
+            const latestImportId = Object.keys(importTimeMap)
+              .sort((a, b) => importTimeMap[b] - importTimeMap[a])[0];
+
+            latestItems = importedItems.filter(item => item.importId === latestImportId);
+          } else {
+            // 아직 한 번도 새 방식으로 저장하지 않은 기존 DB는
+            // 기존 데이터 그대로 보여준다. 새로 한 번 저장하면 이후부터는 최신 묶음만 사용한다.
+            latestItems = allItems;
+          }
+
           if (!dbWordMap[tb]) dbWordMap[tb] = {};
-          if (!dbWordMap[tb][lesson]) dbWordMap[tb][lesson] = [];
-          dbWordMap[tb][lesson].push({ word, meaning, num, createdAt });
+          dbWordMap[tb][lesson] = latestItems;
         });
 
         document.getElementById('authStatusText').innerText = "✅ 인증 성공! 목록에서 지문을 선택해 문제지를 생성하세요.";
@@ -465,8 +542,8 @@
 
       const words = [...dbWordMap[tb][lesson]];
       words.sort((a, b) => {
-        const aHasNum = Number.isFinite(Number(a.num));
-        const bHasNum = Number.isFinite(Number(b.num));
+        const aHasNum = a.num !== null && a.num !== undefined && a.num !== "" && Number.isFinite(Number(a.num)) && Number(a.num) >= 1;
+        const bHasNum = b.num !== null && b.num !== undefined && b.num !== "" && Number.isFinite(Number(b.num)) && Number(b.num) >= 1;
 
         if (aHasNum && bHasNum) return Number(a.num) - Number(b.num);
         if (aHasNum) return -1;
@@ -479,13 +556,25 @@
       let nextAutoNum = 1;
       const usedNums = new Set(
         words
-          .filter(item => Number.isFinite(Number(item.num)))
+          .filter(item =>
+            item.num !== null &&
+            item.num !== undefined &&
+            item.num !== "" &&
+            Number.isFinite(Number(item.num)) &&
+            Number(item.num) >= 1
+          )
           .map(item => Number(item.num))
       );
 
       return words.map(item => {
         let displayNum;
-        if (Number.isFinite(Number(item.num))) {
+        if (
+          item.num !== null &&
+          item.num !== undefined &&
+          item.num !== "" &&
+          Number.isFinite(Number(item.num)) &&
+          Number(item.num) >= 1
+        ) {
           displayNum = Number(item.num);
         } else {
           while (usedNums.has(nextAutoNum)) nextAutoNum++;
@@ -743,6 +832,9 @@
       }
 
       try {
+        // 이번 저장 전체를 하나의 '최신 묶음'으로 식별하기 위한 ID
+        const importId = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
         // 많은 단어도 안정적으로 저장되도록 여러 묶음으로 저장
         const chunkSize = 400;
 
@@ -760,6 +852,8 @@
               num: startNum + globalIndex,
               word: item.word,
               meaning: item.meaning,
+              importId: importId,
+              importSavedAt: firebase.firestore.FieldValue.serverTimestamp(),
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
           });
@@ -774,7 +868,7 @@
         // 저장 직후 단어 목록을 다시 읽어서 화면에 바로 반영
         await loadDropdownsFromDB();
 
-        alert(`✅ 총 ${parsed.length}개 단어가 DB에 저장되었습니다.`);
+        alert(`✅ 총 ${parsed.length}개 단어가 저장되었습니다.\n이제 이 교과서/과에서는 방금 저장한 단어 묶음만 시험에 사용됩니다.`);
       } catch (err) {
         alert("저장 실패: " + err.message);
       }
