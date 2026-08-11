@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>클라우드 영어 지문 문제 은행</title>
+  <title>YMS Middle School Test Program</title>
   <style>
     * { box-sizing: border-box; }
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f4f6f9; color: #333; }
@@ -41,7 +41,7 @@
 </head>
 <body>
 
-  <h1>📚 클라우드 영어 문제 자동 생성기</h1>
+  <h1>📚 YMS Middle School Test Program</h1>
 
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('genTab')">📝 문제지 생성하기 (인증 사용자)</button>
@@ -59,13 +59,13 @@
       <span id="authStatusText" style="font-size:13px; margin-top:5px; display:block; color:#ca8a04;">* 등록된 번호 입력 시 문제 생성이 가능합니다.</span>
     </div>
 
-    <!-- DB에서 불러온 드롭다운 목록 -->
+    <!-- DB에서 불러온 펼침 목록 (Select Box) -->
     <div id="genFormSection" style="opacity: 0.5; pointer-events: none;">
       <div class="row form-group">
         <div class="col">
           <label>교과서 선택</label>
           <select id="genTb" onchange="updateLessonDropdown()">
-            <option value="">인증 후 목록이 표시됩니다</option>
+            <option value="">인증 후 교과서 목록이 표시됩니다</option>
           </select>
         </div>
         <div class="col">
@@ -94,7 +94,7 @@
           <option value="4">4. 빈칸 채우기</option>
         </select>
       </div>
-      <button class="btn-submit" onclick="fetchAndGenerate()">구글 DB에서 불러와 문제지 만들기</button>
+      <button class="btn-submit" onclick="fetchAndGenerate()">문제지 만들기</button>
     </div>
 
     <div class="paper" id="paperArea" style="display:none;"></div>
@@ -175,7 +175,7 @@
     const auth = firebase.auth();
 
     let isPinVerified = false;
-    let dbSentenceMap = {}; // DB에서 불러온 전체 데이터 매핑 구조
+    let dbSentenceMap = {};
 
     auth.onAuthStateChanged(user => {
       if (user) {
@@ -203,12 +203,12 @@
       db.collection("allowed_users").doc(pin).get().then(doc => {
         if (doc.exists) {
           isPinVerified = true;
-          document.getElementById('authStatusText').innerText = "✅ 인증 성공! DB 목록을 불러오는 중입니다...";
+          document.getElementById('authStatusText').innerText = "⏳ 인증 성공! DB 목록을 불러오는 중입니다...";
           document.getElementById('authStatusText').style.color = "#16a34a";
           document.getElementById('genFormSection').style.opacity = "1";
           document.getElementById('genFormSection').style.pointerEvents = "auto";
           
-          loadDropdownsFromDB(); // DB에서 목록 로드
+          loadDropdownsFromDB();
         } else {
           isPinVerified = false;
           document.getElementById('authStatusText').innerText = "❌ 등록되지 않은 사용자 번호입니다.";
@@ -219,7 +219,7 @@
       }).catch(err => alert("인증 오류: " + err.message));
     }
 
-    // 2. DB에서 교과서/과/문장 목록을 전체 조회하여 드롭다운 생성
+    // 2. DB에서 전체 조회하여 드롭다운 생성
     async function loadDropdownsFromDB() {
       try {
         const snapshot = await db.collection("sentences").get();
@@ -243,8 +243,8 @@
         const tbKeys = Object.keys(dbSentenceMap);
 
         if (tbKeys.length === 0) {
-          genTbSelect.innerHTML = "<option value=''>DB에 등록된 교과서가 없습니다</option>";
-          document.getElementById('authStatusText').innerText = "✅ 인증 성공! (DB에 저장된 지문이 없습니다)";
+          genTbSelect.innerHTML = "<option value=''>등록된 교과서가 없습니다 (관리자 탭에서 지문을 추가하세요)</option>";
+          document.getElementById('authStatusText').innerText = "✅ 인증 성공! (DB에 지문을 먼저 저장해야 펼침 목록이 나타납니다)";
           return;
         }
 
@@ -255,14 +255,13 @@
           genTbSelect.appendChild(opt);
         });
 
-        document.getElementById('authStatusText').innerText = "✅ 인증 성공! 문제 생성이 가능합니다.";
+        document.getElementById('authStatusText').innerText = "✅ 인증 성공! 목록에서 지문을 선택해 문제지를 생성하세요.";
         updateLessonDropdown();
       } catch (err) {
-        alert("DB 목록 로드 오류: " + err.message);
+        alert("DB 목록 로드 실패: " + err.message);
       }
     }
 
-    // 선택한 교과서에 따라 '과' 드롭다운 업데이트
     function updateLessonDropdown() {
       const selectedTb = document.getElementById('genTb').value;
       const genLessonSelect = document.getElementById('genLesson');
@@ -284,7 +283,6 @@
       updateSentenceDropdowns();
     }
 
-    // 선택한 교과서와 과에 따라 '시작/끝 문장' 드롭다운 업데이트
     function updateSentenceDropdowns() {
       const selectedTb = document.getElementById('genTb').value;
       const selectedLesson = document.getElementById('genLesson').value;
@@ -316,7 +314,6 @@
         genEndSelect.appendChild(optEnd);
       });
 
-      // 기본값: 끝 문장을 마지막 문장으로 세팅
       if (sentences.length > 0) {
         genEndSelect.value = sentences[sentences.length - 1].num;
       }
@@ -377,7 +374,11 @@
         const currentNum = startNum + idx;
         const docRef = db.collection("sentences").doc();
         batch.set(docRef, {
-          tbCode: tb, lesson: lesson, num: currentNum, eng: eng, kor: korList[idx],
+          tbCode: tb,
+          lesson: lesson,
+          num: currentNum,
+          eng: eng,
+          kor: korList[idx],
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       });
@@ -388,8 +389,6 @@
         document.getElementById('dbStartNum').value = startNum + engList.length;
         document.getElementById('dbEng').value = "";
         document.getElementById('dbKor').value = "";
-        
-        if (isPinVerified) loadDropdownsFromDB(); // 관리자 입력 후 드롭다운 갱신
       } catch (err) {
         alert("일괄 저장 실패: " + err.message);
       }
@@ -405,7 +404,7 @@
       const qType = document.getElementById('genType').value;
 
       if (!tb || isNaN(lesson) || isNaN(start) || isNaN(end)) {
-        return alert("선택된 지문 데이터가 없습니다.");
+        return alert("선택된 지문 데이터가 없거나 올바르지 않습니다.");
       }
 
       db.collection("sentences")
