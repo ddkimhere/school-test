@@ -6,7 +6,6 @@
   <title>YMS Middle School Test Program</title>
   <style>
     * { box-sizing: border-box; }
-    /* 전체 글꼴을 맑은 고딕(Malgun Gothic)으로 지정 */
     body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; margin: 0; padding: 20px; background: #f4f6f9; color: #333; }
     h1 { margin-top: 0; color: #1e293b; }
     .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #cbd5e1; }
@@ -26,36 +25,53 @@
     .auth-box { background: #fffbe3; border: 1px solid #fde047; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
     .info-tip { background: #f1f5f9; border-left: 4px solid #0284c7; padding: 10px 15px; margin-bottom: 15px; font-size: 13px; color: #334155; }
     
-    /* A4 15문장 가득 차게 수용하기 위한 레이아웃 규격 */
+    /* A4 시험지 기본 설정 */
     .paper { background: white; padding: 25px 30px; border-radius: 8px; max-width: 800px; margin: 20px auto 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); position: relative; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; }
     .paper-header-row { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 12px; }
     .paper-instruction { font-size: 17px; font-weight: bold; color: #1e293b; margin: 0; }
     
-    /* 상단 이름/날짜 영역 */
     .student-info-box { display: flex; gap: 20px; font-size: 13.5px; font-weight: bold; color: #334155; align-items: center; }
     .info-item { border-bottom: 1px solid #000; padding: 0 10px 1px 10px; display: inline-block; }
 
     .btn-print { background: #059669; color: white; font-weight: bold; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-bottom: 10px; float: right; font-family: inherit; }
     .btn-print:hover { background: #047857; }
     
-    /* 카드 및 밑줄 간격 조절 */
+    /* 문제 컨테이너 영역 (문장/단어 시험 구분을 위함) */
+    .q-container { display: block; }
+    
+    /* 단어 시험 2열(2컬럼) 50개 전용 레이아웃 */
+    .q-container.vocab-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 30px; row-gap: 2px; }
+
+    /* 문장용 기본 카드 */
     .q-card { margin-bottom: 10px; padding-bottom: 0px; border-bottom: none; page-break-inside: avoid; }
     .q-text { font-size: 13.5px; line-height: 1.35; margin-bottom: 4px; }
     .ans-space { border-bottom: 1px solid #475569; height: 18px; margin-top: 2px; }
     .word-box { background: #f1f5f9; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-bottom: 2px; font-weight: bold; font-size: 12.5px; font-family: inherit; }
 
-    /* 인쇄 전용 CSS (A4 15문장 세팅) */
+    /* 단어 전용 컴팩트 카드 (A4 50단어 맞춤) */
+    .vocab-grid .q-card { margin-bottom: 6px; }
+    .vocab-grid .q-text { font-size: 12px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .vocab-grid .ans-space { height: 14px; margin-top: 1px; border-bottom-color: #333; }
+
+    /* 인쇄 전용 CSS */
     @media print {
-      @page { size: A4; margin: 10mm 12mm; }
+      @page { size: A4; margin: 8mm 10mm; }
       body { background: white; padding: 0; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; }
       h1, .tabs, .auth-box, #genFormSection, .btn-print, #dbTab { display: none !important; }
       .panel { padding: 0; box-shadow: none; }
       .paper { box-shadow: none; padding: 0; max-width: 100%; margin: 0; }
-      .paper-header-row { border-bottom-color: #000; margin-bottom: 10px; padding-bottom: 4px; }
+      .paper-header-row { border-bottom-color: #000; margin-bottom: 8px; padding-bottom: 4px; }
       .student-info-box { color: #000; }
+      
       .q-card { margin-bottom: 8px; }
       .q-text { font-size: 13px; }
       .ans-space { height: 16px; border-bottom-color: #000; }
+
+      /* 인쇄 시 단어 시험 2열 50개 맞춤 규격 */
+      .q-container.vocab-grid { column-gap: 20px; row-gap: 1px; }
+      .vocab-grid .q-card { margin-bottom: 4px; }
+      .vocab-grid .q-text { font-size: 11.5px; }
+      .vocab-grid .ans-space { height: 12px; border-bottom-color: #000; }
     }
   </style>
 
@@ -70,7 +86,7 @@
 
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('genTab')">📝 문제지 생성하기 (인증 사용자)</button>
-    <button class="tab-btn" onclick="switchTab('dbTab')">⚙️ 지문 DB 관리 (선생님 전용)</button>
+    <button class="tab-btn" onclick="switchTab('dbTab')">⚙️ 지문/단어 DB 관리 (선생님 전용)</button>
   </div>
 
   <!-- 1. 문제지 생성 탭 -->
@@ -87,37 +103,40 @@
     <div id="genFormSection" style="opacity: 0.5; pointer-events: none;">
       <div class="row form-group">
         <div class="col">
-          <label>교과서/시험지 선택</label>
-          <select id="genTb" onchange="updateLessonDropdown()">
-            <option value="">인증 후 목록이 표시됩니다</option>
+          <label>시험 종류 선택</label>
+          <select id="genCategory" onchange="updateLessonDropdown()">
+            <option value="sentence">📖 문장/지문 시험</option>
+            <option value="vocab">🔤 단어 시험</option>
           </select>
+        </div>
+        <div class="col">
+          <label>교과서/시험지 선택</label>
+          <select id="genTb" onchange="updateLessonDropdown()"></select>
         </div>
         <div class="col">
           <label>과/단원 선택</label>
-          <select id="genLesson" onchange="updateSentenceDropdowns()">
-            <option value="">교과서를 먼저 선택하세요</option>
-          </select>
+          <select id="genLesson" onchange="updateSentenceDropdowns()"></select>
         </div>
       </div>
-      <div class="row form-group">
-        <div class="col">
-          <label>시작 문장 선택</label>
-          <select id="genStart"></select>
-        </div>
-        <div class="col">
-          <label>끝 문장 선택</label>
-          <select id="genEnd"></select>
+
+      <!-- 문장 시험용 옵션 -->
+      <div id="sentenceOptions">
+        <div class="row form-group">
+          <div class="col">
+            <label>시작 문장 선택</label>
+            <select id="genStart"></select>
+          </div>
+          <div class="col">
+            <label>끝 문장 선택</label>
+            <select id="genEnd"></select>
+          </div>
         </div>
       </div>
+
       <div class="row form-group">
         <div class="col">
           <label>문제 유형</label>
-          <select id="genType" onchange="toggleBlankOption()">
-            <option value="1">1. 해석하기 (Eng → Kor)</option>
-            <option value="2">2. 영어쓰기 (Kor → Eng)</option>
-            <option value="3">3. 단어 배열하기</option>
-            <option value="4">4. 빈칸 채우기</option>
-          </select>
+          <select id="genType" onchange="toggleBlankOption()"></select>
         </div>
         <div class="col" id="blankOptionCol" style="display: none;">
           <label>빈칸 개수 (비율)</label>
@@ -148,10 +167,6 @@
         <input type="password" id="loginPw" value="bong0107!!">
       </div>
       <button class="btn-submit" onclick="handleLogin()">로그인</button>
-      <p style="margin-top:12px; font-size:13px; color:#666;">
-        * 최초 1회 계정 생성: 
-        <a href="#" onclick="handleSignUp()" style="color:#2563eb; font-weight:bold;">[이 이메일로 최초 가입]</a>
-      </p>
     </div>
 
     <div id="adminSection" style="display:none;">
@@ -168,28 +183,39 @@
         </div>
       </div>
 
-      <h3>➕ 구글 클라우드 DB에 지문 일괄 추가</h3>
-      <div class="info-tip">
-        💡 <b>사용 팁:</b> 줄바꿈(Enter) 기준으로 여러 문장을 한 번에 복사해서 넣으시면 됩니다. 지정한 시작 번호부터 순서대로 자동 저장됩니다.
-      </div>
+      <hr style="margin:20px 0; border:none; border-top:1px solid #cbd5e1;">
 
+      <!-- 지문 일괄 추가 -->
+      <h3>➕ 1. 문장/지문 DB 일괄 추가</h3>
       <div class="row form-group">
         <div class="col"><label>교과서 코드</label><input type="text" id="dbTb" value="동아_윤_2"></div>
         <div class="col"><label>과 번호</label><input type="number" id="dbLesson" value="1"></div>
         <div class="col"><label>시작 문장 번호</label><input type="number" id="dbStartNum" value="1"></div>
       </div>
-      
       <div class="form-group">
         <label>영어 문장 목록 (한 줄에 한 문장씩)</label>
-        <textarea id="dbEng" placeholder="1. Somin is a 15-year-old middle school student in Korea.&#10;2. She likes to take photos."></textarea>
+        <textarea id="dbEng" placeholder="1. Somin is a 15-year-old middle school student in Korea."></textarea>
       </div>
-      
       <div class="form-group">
         <label>한글 해석 목록 (한 줄에 한 문장씩)</label>
-        <textarea id="dbKor" placeholder="1. 소민이는 한국에 사는 15세 중학생입니다.&#10;2. 그녀는 사진 찍는 것을 좋아합니다."></textarea>
+        <textarea id="dbKor" placeholder="1. 소민이는 한국에 사는 15세 중학생입니다."></textarea>
       </div>
-      
-      <button class="btn-submit" style="background:#059669;" onclick="saveBatchToFirebase()">일괄 DB에 저장하기</button>
+      <button class="btn-submit" style="background:#059669; margin-bottom:30px;" onclick="saveBatchToFirebase()">[문장 지문 DB 저장]</button>
+
+      <!-- 단어 일괄 추가 -->
+      <h3>➕ 2. 단어 DB 일괄 추가</h3>
+      <div class="info-tip">
+        💡 <b>입력 예시:</b> <code>apple / 사과</code> 또는 <code>banana - 바나나</code> 처럼 한 줄에 한 단어씩 복사해서 넣으시면 됩니다.
+      </div>
+      <div class="row form-group">
+        <div class="col"><label>교과서 코드</label><input type="text" id="dbWordTb" value="동아_윤_2"></div>
+        <div class="col"><label>과 번호</label><input type="number" id="dbWordLesson" value="1"></div>
+      </div>
+      <div class="form-group">
+        <label>단어 및 뜻 목록 (한 줄에 '단어 / 뜻' 형식)</label>
+        <textarea id="dbWords" placeholder="apple / 사과&#10;banana / 바나나&#10;take photos / 사진을 찍다"></textarea>
+      </div>
+      <button class="btn-submit" style="background:#0284c7;" onclick="saveWordsToFirebase()">[단어 DB 저장]</button>
     </div>
   </div>
 
@@ -210,6 +236,7 @@
 
     let isPinVerified = false;
     let dbSentenceMap = {};
+    let dbWordMap = {};
 
     auth.onAuthStateChanged(user => {
       if (user) {
@@ -230,9 +257,10 @@
     }
 
     function toggleBlankOption() {
+      const category = document.getElementById('genCategory').value;
       const qType = document.getElementById('genType').value;
       const blankCol = document.getElementById('blankOptionCol');
-      blankCol.style.display = (qType === "4") ? "block" : "none";
+      blankCol.style.display = (category === "sentence" && qType === "4") ? "block" : "none";
     }
 
     function verifyUserPin() {
@@ -260,39 +288,26 @@
 
     async function loadDropdownsFromDB() {
       try {
-        const snapshot = await db.collection("sentences").get();
+        const sentenceSnapshot = await db.collection("sentences").get();
         dbSentenceMap = {};
-
-        snapshot.forEach(doc => {
+        sentenceSnapshot.forEach(doc => {
           const data = doc.data();
-          const tb = data.tbCode;
-          const lesson = data.lesson;
-          const num = data.num;
-          const eng = data.eng || "";
-
+          const { tbCode: tb, lesson, num, eng = "" } = data;
           if (!dbSentenceMap[tb]) dbSentenceMap[tb] = {};
           if (!dbSentenceMap[tb][lesson]) dbSentenceMap[tb][lesson] = [];
-          
           if (!dbSentenceMap[tb][lesson].some(s => s.num === num)) {
-            dbSentenceMap[tb][lesson].push({ num: num, eng: eng });
+            dbSentenceMap[tb][lesson].push({ num, eng });
           }
         });
 
-        const genTbSelect = document.getElementById('genTb');
-        genTbSelect.innerHTML = "";
-        const tbKeys = Object.keys(dbSentenceMap);
-
-        if (tbKeys.length === 0) {
-          genTbSelect.innerHTML = "<option value=''>등록된 교과서가 없습니다</option>";
-          document.getElementById('authStatusText').innerText = "✅ 인증 성공! (DB에 지문을 먼저 저장해 주세요)";
-          return;
-        }
-
-        tbKeys.forEach(tb => {
-          const opt = document.createElement('option');
-          opt.value = tb;
-          opt.innerText = tb;
-          genTbSelect.appendChild(opt);
+        const wordSnapshot = await db.collection("words").get();
+        dbWordMap = {};
+        wordSnapshot.forEach(doc => {
+          const data = doc.data();
+          const { tbCode: tb, lesson, word, meaning } = data;
+          if (!dbWordMap[tb]) dbWordMap[tb] = {};
+          if (!dbWordMap[tb][lesson]) dbWordMap[tb][lesson] = [];
+          dbWordMap[tb][lesson].push({ word, meaning });
         });
 
         document.getElementById('authStatusText').innerText = "✅ 인증 성공! 목록에서 지문을 선택해 문제지를 생성하세요.";
@@ -303,27 +318,65 @@
     }
 
     function updateLessonDropdown() {
-      const selectedTb = document.getElementById('genTb').value;
-      const genLessonSelect = document.getElementById('genLesson');
-      genLessonSelect.innerHTML = "";
+      const category = document.getElementById('genCategory').value;
+      const targetMap = (category === "sentence") ? dbSentenceMap : dbWordMap;
+      const genTbSelect = document.getElementById('genTb');
+      const genTypeSelect = document.getElementById('genType');
+      
+      genTbSelect.innerHTML = "";
 
-      if (!selectedTb || !dbSentenceMap[selectedTb]) {
-        genLessonSelect.innerHTML = "<option value=''>과 없음</option>";
+      if (category === "sentence") {
+        document.getElementById('sentenceOptions').style.display = "block";
+        genTypeSelect.innerHTML = `
+          <option value="1">1. 해석하기 (Eng → Kor)</option>
+          <option value="2">2. 영어쓰기 (Kor → Eng)</option>
+          <option value="3">3. 단어 배열하기</option>
+          <option value="4">4. 빈칸 채우기</option>
+        `;
+      } else {
+        document.getElementById('sentenceOptions').style.display = "none";
+        genTypeSelect.innerHTML = `
+          <option value="w1">1. 뜻만 보기 (Eng → Kor)</option>
+          <option value="w2">2. 영어만 보기 (Kor → Eng)</option>
+          <option value="w3">3. 섞어서 보기 (랜덤)</option>
+        `;
+      }
+      toggleBlankOption();
+
+      const tbKeys = Object.keys(targetMap);
+      if (tbKeys.length === 0) {
+        genTbSelect.innerHTML = "<option value=''>등록된 데이터가 없습니다</option>";
         return;
       }
 
-      const lessons = Object.keys(dbSentenceMap[selectedTb]).map(Number).sort((a, b) => a - b);
-      lessons.forEach(l => {
+      tbKeys.forEach(tb => {
         const opt = document.createElement('option');
-        opt.value = l;
-        opt.innerText = `${l}과`;
-        genLessonSelect.appendChild(opt);
+        opt.value = tb;
+        opt.innerText = tb;
+        genTbSelect.appendChild(opt);
       });
+
+      const selectedTb = genTbSelect.value;
+      const genLessonSelect = document.getElementById('genLesson');
+      genLessonSelect.innerHTML = "";
+
+      if (selectedTb && targetMap[selectedTb]) {
+        const lessons = Object.keys(targetMap[selectedTb]).map(Number).sort((a, b) => a - b);
+        lessons.forEach(l => {
+          const opt = document.createElement('option');
+          opt.value = l;
+          opt.innerText = `${l}과`;
+          genLessonSelect.appendChild(opt);
+        });
+      }
 
       updateSentenceDropdowns();
     }
 
     function updateSentenceDropdowns() {
+      const category = document.getElementById('genCategory').value;
+      if (category !== "sentence") return;
+
       const selectedTb = document.getElementById('genTb').value;
       const selectedLesson = document.getElementById('genLesson').value;
       const genStartSelect = document.getElementById('genStart');
@@ -332,19 +385,15 @@
       genStartSelect.innerHTML = "";
       genEndSelect.innerHTML = "";
 
-      if (!selectedTb || !selectedLesson || !dbSentenceMap[selectedTb] || !dbSentenceMap[selectedTb][selectedLesson]) {
-        return;
-      }
+      if (!selectedTb || !selectedLesson || !dbSentenceMap[selectedTb] || !dbSentenceMap[selectedTb][selectedLesson]) return;
 
       const sentences = dbSentenceMap[selectedTb][selectedLesson];
       sentences.sort((a, b) => a.num - b.num);
 
       const addedNums = new Set();
-
       sentences.forEach(item => {
         if (!addedNums.has(item.num)) {
           addedNums.add(item.num);
-
           const preview = item.eng.length > 25 ? item.eng.substring(0, 25) + "..." : item.eng;
           const label = `${item.num}번: ${preview}`;
 
@@ -377,26 +426,15 @@
       }).catch(err => alert("추가 실패: " + err.message));
     }
 
-    function handleSignUp() {
-      const email = document.getElementById('loginEmail').value.trim();
-      const pw = document.getElementById('loginPw').value;
-      auth.createUserWithEmailAndPassword(email, pw)
-        .then(() => alert("관리자 계정이 성공적으로 생성되었습니다!"))
-        .catch(err => alert("계정 생성 오류: " + err.message));
-    }
-
     function handleLogin() {
       const email = document.getElementById('loginEmail').value.trim();
       const pw = document.getElementById('loginPw').value;
-      auth.signInWithEmailAndPassword(email, pw)
-        .catch(err => alert("로그인 실패: 이메일과 비밀번호를 확인해주세요."));
+      auth.signInWithEmailAndPassword(email, pw).catch(err => alert("로그인 실패: 이메일과 비밀번호를 확인해주세요."));
     }
 
     function handleLogout() { auth.signOut(); }
 
-    function cleanSentence(str) {
-      return str.replace(/^\d+[\.\)\:]\s*/, '').trim();
-    }
+    function cleanSentence(str) { return str.replace(/^\d+[\.\)\:]\s*/, '').trim(); }
 
     async function saveBatchToFirebase() {
       const tb = document.getElementById('dbTb').value.trim();
@@ -410,91 +448,100 @@
       const engList = rawEng.split('\n').map(s => cleanSentence(s)).filter(s => s.length > 0);
       const korList = rawKor.split('\n').map(s => cleanSentence(s)).filter(s => s.length > 0);
 
-      if (engList.length !== korList.length) {
-        return alert(`영어 문장 수(${engList.length}개)와 한글 해석 수(${korList.length}개)가 일치하지 않습니다.`);
-      }
+      if (engList.length !== korList.length) return alert("영어와 한글의 문장 수가 일치하지 않습니다.");
 
       const batch = db.batch();
-
       engList.forEach((eng, idx) => {
-        const currentNum = startNum + idx;
         const docRef = db.collection("sentences").doc();
-        batch.set(docRef, {
-          tbCode: tb,
-          lesson: lesson,
-          num: currentNum,
-          eng: eng,
-          kor: korList[idx],
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        batch.set(docRef, { tbCode: tb, lesson, num: startNum + idx, eng, kor: korList[idx], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
       });
 
       try {
         await batch.commit();
-        alert(`총 ${engList.length}개의 문장이 성공적으로 DB에 등록되었습니다!`);
+        alert(`총 ${engList.length}개 문장이 성공적으로 DB에 저장되었습니다!`);
         document.getElementById('dbStartNum').value = startNum + engList.length;
-        document.getElementById('dbEng').value = "";
-        document.getElementById('dbKor').value = "";
-      } catch (err) {
-        alert("일괄 저장 실패: " + err.message);
-      }
+        document.getElementById('dbEng').value = ""; document.getElementById('dbKor').value = "";
+      } catch (err) { alert("저장 실패: " + err.message); }
+    }
+
+    async function saveWordsToFirebase() {
+      const tb = document.getElementById('dbWordTb').value.trim();
+      const lesson = parseInt(document.getElementById('dbWordLesson').value);
+      const rawWords = document.getElementById('dbWords').value.trim();
+
+      if (!tb || !rawWords) return alert("교과서 코드와 단어 목록을 입력해 주세요.");
+
+      const lines = rawWords.split('\n').filter(l => l.trim().length > 0);
+      const batch = db.batch();
+      let count = 0;
+
+      lines.forEach(line => {
+        const parts = line.split(/[\/\-\:]/);
+        if (parts.length >= 2) {
+          const word = parts[0].trim();
+          const meaning = parts.slice(1).join('/').trim();
+          const docRef = db.collection("words").doc();
+          batch.set(docRef, { tbCode: tb, lesson, word, meaning, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+          count++;
+        }
+      });
+
+      if (count === 0) return alert("올바른 단어/뜻 형식으로 입력해 주세요. 예: apple / 사과");
+
+      try {
+        await batch.commit();
+        alert(`총 ${count}개 단어가 DB에 저장되었습니다!`);
+        document.getElementById('dbWords').value = "";
+      } catch (err) { alert("저장 실패: " + err.message); }
     }
 
     function fetchAndGenerate() {
       if (!isPinVerified) return alert("먼저 핸드폰 번호 뒷자리 인증을 완료해 주세요.");
 
+      const category = document.getElementById('genCategory').value;
       const tb = document.getElementById('genTb').value;
       const lesson = parseInt(document.getElementById('genLesson').value);
-      const start = parseInt(document.getElementById('genStart').value);
-      const end = parseInt(document.getElementById('genEnd').value);
       const qType = document.getElementById('genType').value;
 
-      if (!tb || isNaN(lesson) || isNaN(start) || isNaN(end)) {
-        return alert("선택된 지문 데이터가 없거나 올바르지 않습니다.");
-      }
+      if (!tb || isNaN(lesson)) return alert("지문 데이터를 올바르게 선택해 주세요.");
 
-      db.collection("sentences")
-        .where("tbCode", "==", tb)
-        .where("lesson", "==", lesson)
-        .get()
-        .then(snapshot => {
-          let map = new Map();
-          
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.num >= start && data.num <= end) {
-              if (!map.has(data.num)) {
-                map.set(data.num, data);
-              }
-            }
+      if (category === "sentence") {
+        const start = parseInt(document.getElementById('genStart').value);
+        const end = parseInt(document.getElementById('genEnd').value);
+
+        db.collection("sentences").where("tbCode", "==", tb).where("lesson", "==", lesson).get()
+          .then(snapshot => {
+            let map = new Map();
+            snapshot.forEach(doc => {
+              const data = doc.data();
+              if (data.num >= start && data.num <= end && !map.has(data.num)) map.set(data.num, data);
+            });
+            let list = Array.from(map.values()).sort((a, b) => a.num - b.num);
+            renderPaper(list, qType, "sentence");
           });
-
-          let list = Array.from(map.values());
-          list.sort((a, b) => a.num - b.num);
-          renderPaper(list, qType);
-        })
-        .catch(err => alert("조회 오류: " + err.message));
+      } else {
+        db.collection("words").where("tbCode", "==", tb).where("lesson", "==", lesson).get()
+          .then(snapshot => {
+            let list = [];
+            snapshot.forEach(doc => list.push(doc.data()));
+            renderPaper(list, qType, "vocab");
+          });
+      }
     }
 
     function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
-    function renderPaper(dataList, qType) {
+    function renderPaper(dataList, qType, category) {
       const paper = document.getElementById('paperArea');
       paper.style.display = "block";
       paper.innerHTML = "";
 
       if (dataList.length === 0) {
-        paper.innerHTML = "<p style='text-align:center;'>해당 조건의 지문 데이터가 없습니다.</p>";
+        paper.innerHTML = "<p style='text-align:center;'>해당 조건의 문제 데이터가 없습니다.</p>";
         return;
       }
 
-      const instructions = {
-        "1": "다음 문장을 해석하시오.",
-        "2": "다음 우리말을 영작하시오.",
-        "3": "주어진 단어를 올바르게 배열하시오.",
-        "4": "다음 문장의 빈칸에 알맞은 단어를 쓰시오."
-      };
-
+      // 상단 인쇄 버튼
       const topBar = document.createElement('div');
       topBar.style.overflow = "hidden";
       topBar.style.marginBottom = "5px";
@@ -506,12 +553,18 @@
       topBar.appendChild(printBtn);
       paper.appendChild(topBar);
 
+      const instructions = {
+        "1": "다음 문장을 해석하시오.", "2": "다음 우리말을 영작하시오.",
+        "3": "주어진 단어를 올바르게 배열하시오.", "4": "다음 문장의 빈칸에 알맞은 단어를 쓰시오.",
+        "w1": "다음 영어 단어의 뜻을 쓰시오.", "w2": "다음 뜻에 알맞은 영어 단어를 쓰시오.", "w3": "다음 알맞은 영단어 또는 뜻을 쓰시오."
+      };
+
       const headerRow = document.createElement('div');
       headerRow.className = "paper-header-row";
       
       const titleDiv = document.createElement('div');
       titleDiv.className = "paper-instruction";
-      titleDiv.innerText = instructions[qType] || "";
+      titleDiv.innerText = instructions[qType] || "다음 문제를 푸시오.";
 
       const studentInfo = document.createElement('div');
       studentInfo.className = "student-info-box";
@@ -526,6 +579,10 @@
 
       const blankRatio = parseFloat(document.getElementById('blankRatio').value) || 0.4;
 
+      // 문제 생성 컨테이너 (단어 시험일 경우 2열 그리드 클래스 추가)
+      const container = document.createElement('div');
+      container.className = (category === "vocab") ? "q-container vocab-grid" : "q-container";
+
       dataList.forEach((item, idx) => {
         const card = document.createElement('div');
         card.className = "q-card";
@@ -533,30 +590,36 @@
         const qNumberStr = `${idx + 1}. `;
         let html = "";
 
-        if (qType === "1") {
-          html = `<div class="q-text"><b>${qNumberStr}${item.eng}</b></div><div class="ans-space"></div>`;
-        } else if (qType === "2") {
-          html = `<div class="q-text"><b>${qNumberStr}${item.kor}</b></div><div class="ans-space"></div>`;
-        } else if (qType === "3") {
-          const words = shuffle(item.eng.replace(/[.,!?]/g, '').split(" ")).join(" / ");
-          html = `<div class="q-text" style="font-size:12.5px; color:#555; margin-bottom:2px;">${qNumberStr}뜻: ${item.kor}</div>
-                  <div class="word-box">[ ${words} ]</div><div class="ans-space"></div>`;
-        } else if (qType === "4") {
-          const words = item.eng.split(" ");
-          const blanked = words.map(w => {
-            const cleanWord = w.replace(/[^a-zA-Z]/g, '');
-            if (cleanWord.length >= 2 && Math.random() < blankRatio) {
-              return "_______";
-            }
-            return w;
-          }).join(" ");
-
-          html = `<div class="q-text"><b>${qNumberStr}${blanked}</b></div><div style="font-size:12px; color:#555; margin-top:-3px;">(뜻: ${item.kor})</div><div class="ans-space"></div>`;
+        if (category === "sentence") {
+          if (qType === "1") {
+            html = `<div class="q-text"><b>${qNumberStr}${item.eng}</b></div><div class="ans-space"></div>`;
+          } else if (qType === "2") {
+            html = `<div class="q-text"><b>${qNumberStr}${item.kor}</b></div><div class="ans-space"></div>`;
+          } else if (qType === "3") {
+            const words = shuffle(item.eng.replace(/[.,!?]/g, '').split(" ")).join(" / ");
+            html = `<div class="q-text" style="font-size:12.5px; color:#555; margin-bottom:2px;">${qNumberStr}뜻: ${item.kor}</div>
+                    <div class="word-box">[ ${words} ]</div><div class="ans-space"></div>`;
+          } else if (qType === "4") {
+            const words = item.eng.split(" ");
+            const blanked = words.map(w => (w.replace(/[^a-zA-Z]/g, '').length >= 2 && Math.random() < blankRatio) ? "_______" : w).join(" ");
+            html = `<div class="q-text"><b>${qNumberStr}${blanked}</b></div><div style="font-size:12px; color:#555; margin-top:-3px;">(뜻: ${item.kor})</div><div class="ans-space"></div>`;
+          }
+        } else {
+          // 단어 시험 처리 (2열 전용)
+          let isShowEng = (qType === "w1") ? true : (qType === "w2" ? false : Math.random() > 0.5);
+          
+          if (isShowEng) {
+            html = `<div class="q-text"><b>${qNumberStr}${item.word}</b></div><div class="ans-space"></div>`;
+          } else {
+            html = `<div class="q-text"><b>${qNumberStr}${item.meaning}</b></div><div class="ans-space"></div>`;
+          }
         }
 
         card.innerHTML = html;
-        paper.appendChild(card);
+        container.appendChild(card);
       });
+
+      paper.appendChild(container);
     }
   </script>
 </body>
