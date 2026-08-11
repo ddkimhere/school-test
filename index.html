@@ -16,13 +16,14 @@
     .form-group { margin-bottom: 15px; }
     label { display: block; font-weight: bold; margin-bottom: 5px; color: #475569; }
     input, select, textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 15px; }
-    textarea { height: 70px; resize: vertical; }
+    textarea { height: 140px; resize: vertical; line-height: 1.5; font-family: inherit; }
     .row { display: flex; gap: 15px; }
     .col { flex: 1; }
     button.btn-submit { background: #2563eb; color: white; font-weight: bold; padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; width: 100%; font-size: 16px; }
     button.btn-submit:hover { background: #1d4ed8; }
     .admin-bar { background: #e0f2fe; border: 1px solid #bae6fd; padding: 12px 20px; border-radius: 6px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
     .auth-box { background: #fffbe3; border: 1px solid #fde047; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+    .info-tip { background: #f1f5f9; border-left: 4px solid #0284c7; padding: 10px 15px; margin-bottom: 15px; font-size: 13px; color: #334155; }
     
     /* 문제지 출력 스타일 */
     .paper { background: white; padding: 40px; border-radius: 8px; max-width: 800px; margin: 20px auto 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
@@ -47,10 +48,8 @@
     <button class="tab-btn" onclick="switchTab('dbTab')">⚙️ 지문 DB 관리 (선생님 전용)</button>
   </div>
 
-  <!-- 1. 문제지 생성 탭 (핸드폰 뒷자리 인증 필요) -->
+  <!-- 1. 문제지 생성 탭 -->
   <div id="genTab" class="panel active">
-    
-    <!-- 사용자 인증 입력창 -->
     <div class="auth-box">
       <label>📱 사용자 인증 (핸드폰 번호 뒷자리 4자리 입력)</label>
       <div style="display:flex; gap:10px;">
@@ -60,7 +59,6 @@
       <span id="authStatusText" style="font-size:13px; margin-top:5px; display:block; color:#ca8a04;">* 등록된 번호 입력 시 문제 생성이 가능합니다.</span>
     </div>
 
-    <!-- 문제 생성 조건 입력 폼 (인증 전에는 숨김) -->
     <div id="genFormSection" style="opacity: 0.5; pointer-events: none;">
       <div class="row form-group">
         <div class="col">
@@ -97,9 +95,8 @@
     <div class="paper" id="paperArea" style="display:none;"></div>
   </div>
 
-  <!-- 2. 지문 DB 관리 탭 (관리자 전용) -->
+  <!-- 2. 지문 DB 관리 탭 -->
   <div id="dbTab" class="panel">
-    <!-- 로그인 전 화면 -->
     <div id="loginSection">
       <h3>🔒 관리자 로그인</h3>
       <div class="form-group">
@@ -117,14 +114,12 @@
       </p>
     </div>
 
-    <!-- 로그인 후 화면 (지문 및 승인 번호 등록) -->
     <div id="adminSection" style="display:none;">
       <div class="admin-bar">
         <span>👤 관리자(<b id="userEmailText"></b>) 로그인됨</span>
         <button style="padding:6px 12px; background:#ef4444; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="handleLogout()">로그아웃</button>
       </div>
 
-      <!-- 허용된 사용자 핸드폰 번호 관리 -->
       <div style="background:#f8fafc; padding:15px; border:1px solid #e2e8f0; border-radius:6px; margin-bottom:20px;">
         <h4 style="margin-top:0;">📱 허용 사용자 핸드폰 뒷자리 등록</h4>
         <div style="display:flex; gap:10px;">
@@ -133,21 +128,29 @@
         </div>
       </div>
 
-      <h3>➕ 구글 클라우드 DB에 새 문장 추가</h3>
+      <h3>➕ 구글 클라우드 DB에 지문 일괄 추가</h3>
+      
+      <div class="info-tip">
+        💡 <b>사용 팁:</b> 줄바꿈(Enter) 기준으로 여러 문장을 한 번에 복사해서 넣으시면 됩니다. 앞에 '1. ' 같은 번호가 붙어있어도 자동으로 제거되며 지정한 시작 번호부터 순서대로 자동 저장됩니다.
+      </div>
+
       <div class="row form-group">
         <div class="col"><label>교과서 코드</label><input type="text" id="dbTb" value="동아_윤_2"></div>
         <div class="col"><label>과 번호</label><input type="number" id="dbLesson" value="1"></div>
-        <div class="col"><label>문장 번호</label><input type="number" id="dbNum" value="1"></div>
+        <div class="col"><label>시작 문장 번호</label><input type="number" id="dbStartNum" value="1"></div>
       </div>
+      
       <div class="form-group">
-        <label>영어 문장</label>
-        <textarea id="dbEng" placeholder="Somin is a 15-year-old middle school student in Korea."></textarea>
+        <label>영어 문장 목록 (한 줄에 한 문장씩)</label>
+        <textarea id="dbEng" placeholder="1. Somin is a 15-year-old middle school student in Korea.&#10;2. She likes to take photos."></textarea>
       </div>
+      
       <div class="form-group">
-        <label>한글 해석</label>
-        <textarea id="dbKor" placeholder="소민이는 한국에 사는 15세 중학생입니다."></textarea>
+        <label>한글 해석 목록 (한 줄에 한 문장씩)</label>
+        <textarea id="dbKor" placeholder="1. 소민이는 한국에 사는 15세 중학생입니다.&#10;2. 그녀는 사진 찍는 것을 좋아합니다."></textarea>
       </div>
-      <button class="btn-submit" style="background:#059669;" onclick="saveToFirebase()">DB에 저장하기</button>
+      
+      <button class="btn-submit" style="background:#059669;" onclick="saveBatchToFirebase()">일괄 DB에 저장하기</button>
     </div>
   </div>
 
@@ -236,24 +239,53 @@
 
     function handleLogout() { auth.signOut(); }
 
-    function saveToFirebase() {
+    // 문장 앞 순번 제거 유틸리티 함수 (예: "1. Somin" -> "Somin")
+    function cleanSentence(str) {
+      return str.replace(/^\d+[\.\)\:]\s*/, '').trim();
+    }
+
+    // 여러 문장 일괄 저장 함수
+    async function saveBatchToFirebase() {
       const tb = document.getElementById('dbTb').value.trim();
       const lesson = parseInt(document.getElementById('dbLesson').value);
-      const num = parseInt(document.getElementById('dbNum').value);
-      const eng = document.getElementById('dbEng').value.trim();
-      const kor = document.getElementById('dbKor').value.trim();
+      const startNum = parseInt(document.getElementById('dbStartNum').value);
+      const rawEng = document.getElementById('dbEng').value.trim();
+      const rawKor = document.getElementById('dbKor').value.trim();
 
-      if (!tb || !eng || !kor) return alert("모든 항목을 입력해 주세요.");
+      if (!tb || !rawEng || !rawKor) return alert("모든 항목을 입력해 주세요.");
 
-      db.collection("sentences").add({
-        tbCode: tb, lesson: lesson, num: num, eng: eng, kor: kor,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      }).then(() => {
-        alert(`${tb} ${lesson}과 ${num}번 문장 저장 완료!`);
-        document.getElementById('dbNum').value = num + 1;
+      // 줄바꿈 단위로 문장 분리
+      const engList = rawEng.split('\n').map(s => cleanSentence(s)).filter(s => s.length > 0);
+      const korList = rawKor.split('\n').map(s => cleanSentence(s)).filter(s => s.length > 0);
+
+      if (engList.length !== korList.length) {
+        return alert(`영어 문장 수(${engList.length}개)와 한글 해석 수(${korList.length}개)가 일치하지 않습니다. 줄바꿈 위치를 확인해주세요.`);
+      }
+
+      const batch = db.batch();
+
+      engList.forEach((eng, idx) => {
+        const currentNum = startNum + idx;
+        const docRef = db.collection("sentences").doc(); // 새 문서 ID 생성
+        batch.set(docRef, {
+          tbCode: tb,
+          lesson: lesson,
+          num: currentNum,
+          eng: eng,
+          kor: korList[idx],
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+
+      try {
+        await batch.commit();
+        alert(`총 ${engList.length}개의 문장이 성공적으로 DB에 등록되었습니다! (문장 번호: ${startNum}번 ~ ${startNum + engList.length - 1}번)`);
+        document.getElementById('dbStartNum').value = startNum + engList.length;
         document.getElementById('dbEng').value = "";
         document.getElementById('dbKor').value = "";
-      }).catch(err => alert("저장 실패: " + err.message));
+      } catch (err) {
+        alert("일괄 저장 실패: " + err.message);
+      }
     }
 
     function fetchAndGenerate() {
