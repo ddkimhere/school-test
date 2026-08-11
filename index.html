@@ -394,6 +394,7 @@
       }
     }
 
+    // 인덱스 오류가 발생하지 않도록 자바스크립트 내 필터링으로 수정된 함수
     function fetchAndGenerate() {
       if (!isPinVerified) return alert("먼저 핸드폰 번호 뒷자리 인증을 완료해 주세요.");
 
@@ -407,15 +408,19 @@
         return alert("선택된 지문 데이터가 없거나 올바르지 않습니다.");
       }
 
+      // 인덱스 에러 방지: DB에서는 교과서와 과만 검색하고 범위 필터링은 자바스크립트에서 수행
       db.collection("sentences")
         .where("tbCode", "==", tb)
         .where("lesson", "==", lesson)
-        .where("num", ">=", start)
-        .where("num", "<=", end)
         .get()
         .then(snapshot => {
           let list = [];
-          snapshot.forEach(doc => list.push(doc.data()));
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.num >= start && data.num <= end) {
+              list.push(data);
+            }
+          });
           list.sort((a, b) => a.num - b.num);
           renderPaper(list, qType);
         })
