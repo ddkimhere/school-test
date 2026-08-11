@@ -82,34 +82,36 @@
     <div class="paper" id="paperArea" style="display:none;"></div>
   </div>
 
-  <!-- 2. 지문 DB 관리 탭 (로그인 필요) -->
+  <!-- 2. 지문 DB 관리 탭 (관리자 이메일 고정) -->
   <div id="dbTab" class="panel">
     <!-- 로그인 전 화면 -->
     <div id="loginSection">
       <h3>🔒 관리자 로그인</h3>
-      <p style="color:#64748b; font-size:14px;">지문을 등록하려면 선생님 계정으로 로그인해 주세요.</p>
       <div class="form-group">
-        <label>이메일</label>
-        <input type="email" id="loginEmail" placeholder="admin@example.com">
+        <label>관리자 이메일</label>
+        <input type="email" id="loginEmail" value="ddkim1984@gmail.com">
       </div>
       <div class="form-group">
         <label>비밀번호</label>
-        <input type="password" id="loginPw">
+        <input type="password" id="loginPw" value="bong0107!!">
       </div>
       <button class="btn-submit" onclick="handleLogin()">로그인</button>
-      <p style="margin-top:10px; font-size:13px; color:#888;">* 처음이신가요? <a href="#" onclick="handleSignUp()">이 계정으로 관리자 회원가입하기</a></p>
+      <p style="margin-top:12px; font-size:13px; color:#666;">
+        * 최초 1회만 계정 생성이 필요합니다: 
+        <a href="#" onclick="handleSignUp()" style="color:#2563eb; font-weight:bold;">[이 이메일로 최초 가입하기]</a>
+      </p>
     </div>
 
     <!-- 로그인 후 화면 (지문 등록 폼) -->
     <div id="adminSection" style="display:none;">
       <div class="admin-bar">
-        <span>👤 <b id="userEmailText"></b> 님 로그인됨</span>
+        <span>👤 관리자(<b id="userEmailText"></b>) 로그인됨</span>
         <button style="padding:6px 12px; background:#ef4444; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="handleLogout()">로그아웃</button>
       </div>
 
       <h3>➕ 구글 클라우드 DB에 새 문장 추가</h3>
       <div class="row form-group">
-        <div class="col"><label>교과서 코드</label><input type="text" id="dbTb" placeholder="예: 동아_윤_2"></div>
+        <div class="col"><label>교과서 코드</label><input type="text" id="dbTb" value="동아_윤_2"></div>
         <div class="col"><label>과 번호</label><input type="number" id="dbLesson" value="1"></div>
         <div class="col"><label>문장 번호</label><input type="number" id="dbNum" value="1"></div>
       </div>
@@ -126,7 +128,7 @@
   </div>
 
   <script>
-    // ⚠️ [필수] 본인의 파이어베이스 설정 정보 입력!
+    // ⚠️ 본인의 파이어베이스 설정 정보 입력
     const firebaseConfig = {
       apiKey: "YOUR_API_KEY",
       authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
@@ -160,27 +162,31 @@
       event.target.classList.add('active');
     }
 
-    // 관리자 가입/로그인/로그아웃
+    // 최초 회원가입 (최초 1회만 클릭)
     function handleSignUp() {
-      const email = document.getElementById('loginEmail').value;
+      const email = document.getElementById('loginEmail').value.trim();
       const pw = document.getElementById('loginPw').value;
+
       auth.createUserWithEmailAndPassword(email, pw)
-        .then(() => alert("관리자 계정이 생성되었습니다!"))
-        .catch(err => alert("가입 실패: " + err.message));
+        .then(() => alert("관리자 계정이 성공적으로 생성되었습니다!"))
+        .catch(err => alert("계정 생성 오류: " + err.message));
     }
 
+    // 로그인
     function handleLogin() {
-      const email = document.getElementById('loginEmail').value;
+      const email = document.getElementById('loginEmail').value.trim();
       const pw = document.getElementById('loginPw').value;
+
       auth.signInWithEmailAndPassword(email, pw)
-        .catch(err => alert("로그인 실패: " + err.message));
+        .catch(err => alert("로그인 실패: 이메일과 비밀번호를 확인해주세요."));
     }
 
+    // 로그아웃
     function handleLogout() {
       auth.signOut();
     }
 
-    // 지문 저장 (로그인된 상태에서만 작동)
+    // 지문 저장 (로그인 상태 전용)
     function saveToFirebase() {
       const tb = document.getElementById('dbTb').value.trim();
       const lesson = parseInt(document.getElementById('dbLesson').value);
@@ -198,10 +204,10 @@
         document.getElementById('dbNum').value = num + 1;
         document.getElementById('dbEng').value = "";
         document.getElementById('dbKor').value = "";
-      }).catch(err => alert("저장 실패 (권한 없음): " + err.message));
+      }).catch(err => alert("저장 실패: " + err.message));
     }
 
-    // 문제지 생성 (로그인 없이 누구나 가능)
+    // 문제지 생성 (로그인 없이 가능)
     function fetchAndGenerate() {
       const tb = document.getElementById('genTb').value.trim();
       const lesson = parseInt(document.getElementById('genLesson').value);
