@@ -104,7 +104,7 @@
       <h3>🔒 관리자 로그인</h3>
       <div class="form-group">
         <label>관리자 이메일</label>
-        <input type="email" id="loginEmail" value="ddkim1984@gmail.com">
+        <input type="email" id="loginEmail" value="ddkimhere1984@gmail.com">
       </div>
       <div class="form-group">
         <label>비밀번호</label>
@@ -152,8 +152,6 @@
   </div>
 
   <script>
-    // ⚠️ 본인의 파이어베이스 설정 정보 입력
-
     const firebaseConfig = {
       apiKey: "AIzaSyBQU7tXEVtN-W-KbMWlXyevqPnaQoUND40",
       authDomain: "school-test-b8d9c.firebaseapp.com",
@@ -164,13 +162,12 @@
       measurementId: "G-DZGC4P918C"
     };
 
-      firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    let isPinVerified = false; // 인증 상태 변수
+    let isPinVerified = false;
 
-    // 로그인 상태 감지
     auth.onAuthStateChanged(user => {
       if (user) {
         document.getElementById('loginSection').style.display = 'none';
@@ -189,7 +186,6 @@
       event.target.classList.add('active');
     }
 
-    // 1. 핸드폰 뒷자리 검증 함수
     function verifyUserPin() {
       const pin = document.getElementById('userPhonePin').value.trim();
       if (pin.length !== 4) return alert("핸드폰 번호 뒷자리 4자리를 입력해 주세요.");
@@ -211,7 +207,6 @@
       }).catch(err => alert("인증 오류: " + err.message));
     }
 
-    // 2. 관리자가 허용 핸드폰 번호 추가 함수
     function addAllowedPin() {
       const pin = document.getElementById('newAllowedPin').value.trim();
       if (pin.length !== 4) return alert("4자리 숫자를 입력해 주세요.");
@@ -224,7 +219,6 @@
       }).catch(err => alert("추가 실패: " + err.message));
     }
 
-    // 관리자 가입/로그인/로그아웃
     function handleSignUp() {
       const email = document.getElementById('loginEmail').value.trim();
       const pw = document.getElementById('loginPw').value;
@@ -242,7 +236,6 @@
 
     function handleLogout() { auth.signOut(); }
 
-    // 지문 저장
     function saveToFirebase() {
       const tb = document.getElementById('dbTb').value.trim();
       const lesson = parseInt(document.getElementById('dbLesson').value);
@@ -263,7 +256,6 @@
       }).catch(err => alert("저장 실패: " + err.message));
     }
 
-    // 문제지 생성
     function fetchAndGenerate() {
       if (!isPinVerified) return alert("먼저 핸드폰 번호 뒷자리 인증을 완료해 주세요.");
 
