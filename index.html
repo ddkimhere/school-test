@@ -29,6 +29,7 @@
     .paper { background: white; padding: 25px 30px; border-radius: 8px; max-width: 800px; margin: 20px auto 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); position: relative; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; }
     .paper-header-row { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 12px; }
     .paper-instruction { font-size: 17px; font-weight: bold; color: #1e293b; margin: 0; }
+    .paper-meta { font-size: 13px; font-weight: bold; color: #475569; margin: 0 0 6px 0; letter-spacing: 0.1px; }
     
     .student-info-box { display: flex; gap: 20px; font-size: 13.5px; font-weight: bold; color: #334155; align-items: center; }
     .info-item { border-bottom: 1px solid #000; padding: 0 10px 1px 10px; display: inline-block; }
@@ -61,6 +62,7 @@
       .panel { padding: 0; box-shadow: none; }
       .paper { box-shadow: none; padding: 0; max-width: 100%; margin: 0; }
       .paper-header-row { border-bottom-color: #000; margin-bottom: 8px; padding-bottom: 4px; }
+      .paper-meta { color: #000; }
       .student-info-box { color: #000; }
       
       .q-card { margin-bottom: 8px; }
@@ -277,7 +279,7 @@
       <div class="row form-group">
         <div class="col">
           <label>데이터 종류</label>
-          <select id="dbEditorCategory" onchange="refreshDbEditorFilters()">
+          <select id="dbEditorCategory" onchange="refreshDbEditorFilters(); updateDbExcelButton()">
             <option value="sentence">문장/지문</option>
             <option value="vocab">단어</option>
           </select>
@@ -295,6 +297,7 @@
       <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
         <button type="button" onclick="loadDbEditor()" style="flex:1; min-width:180px; padding:10px 14px; background:#2563eb; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">🔎 선택 데이터 불러오기</button>
         <button type="button" onclick="refreshDbEditorFilters()" style="padding:10px 14px; background:#475569; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">🔄 목록 새로고침</button>
+        <button id="dbExcelBtn" type="button" onclick="downloadDbWordsExcel()" style="display:none; padding:10px 14px; background:#107c41; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">⬇️ 단어 엑셀 다운로드</button>
         <button type="button" onclick="renameDbTextbook()" style="padding:10px 14px; background:#7c3aed; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">✏️ 교과서 이름 변경</button>
         <button type="button" onclick="deleteDbLesson()" style="padding:10px 14px; background:#dc2626; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">🗑️ 이 과 전체 삭제</button>
       </div>
@@ -842,10 +845,102 @@
       return document.getElementById('dbEditorCategory').value === "sentence" ? "sentences" : "words";
     }
 
+    function updateDbExcelButton() {
+      const btn = document.getElementById('dbExcelBtn');
+      if (!btn) return;
+      btn.style.display = document.getElementById('dbEditorCategory').value === "vocab" ? "inline-block" : "none";
+    }
+
+    function escapeXml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+    }
+
+    async function downloadDbWordsExcel() {
+      if (!auth.currentUser) return alert("관리자 로그인이 필요합니다.");
+      if (document.getElementById('dbEditorCategory').value !== "vocab") {
+        return alert("데이터 종류에서 [단어]를 선택해 주세요.");
+      }
+
+      const tb = document.getElementById('dbEditorTb').value;
+      const lesson = Number(document.getElementById('dbEditorLesson').value);
+      if (!tb || !Number.isFinite(lesson)) return alert("교과서와 과를 선택해 주세요.");
+
+      let latestWords;
+      try {
+        latestWords = await fetchLatestWordsFromDB(tb, lesson);
+      } catch (err) {
+        return alert("단어 데이터를 불러오지 못했습니다: " + err.message);
+      }
+
+      if (!latestWords || latestWords.length === 0) {
+        return alert(`${tb} ${lesson}과에 저장된 단어가 없습니다.`);
+      }
+
+      if (!dbWordMap[tb]) dbWordMap[tb] = {};
+      dbWordMap[tb][lesson] = latestWords;
+      const words = getSortedWords(tb, lesson);
+
+      const header = ["교과서", "Unit", "번호", "영단어", "뜻"];
+      const rows = words.map(item => [tb, lesson, item.displayNum, item.word, item.meaning]);
+
+      const xmlRow = (cells, headerRow = false) => {
+        const cellXml = cells.map((value, index) => {
+          const isNumber = !headerRow && (index === 1 || index === 2) && Number.isFinite(Number(value));
+          const type = isNumber ? "Number" : "String";
+          const style = headerRow ? ' ss:StyleID="Header"' : '';
+          return `<Cell${style}><Data ss:Type="${type}">${escapeXml(value)}</Data></Cell>`;
+        }).join("");
+        return `<Row>${cellXml}</Row>`;
+      };
+
+      const workbookXml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Styles>
+  <Style ss:ID="Header">
+   <Font ss:Bold="1"/>
+   <Interior ss:Color="#D9EAD3" ss:Pattern="Solid"/>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="Unit ${lesson}">
+  <Table>
+   <Column ss:Width="110"/>
+   <Column ss:Width="55"/>
+   <Column ss:Width="45"/>
+   <Column ss:Width="150"/>
+   <Column ss:Width="220"/>
+   ${xmlRow(header, true)}
+   ${rows.map(row => xmlRow(row)).join("\n   ")}
+  </Table>
+ </Worksheet>
+</Workbook>`;
+
+      const blob = new Blob([workbookXml], { type: "application/vnd.ms-excel;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safeTb = tb.replace(/[\/:*?"<>|]/g, "_");
+      a.href = url;
+      a.download = `${safeTb}_Unit${lesson}_단어목록.xls`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
     async function refreshDbEditorFilters(preferredTb = "", preferredLesson = "") {
       if (!auth.currentUser) return;
 
       const category = document.getElementById('dbEditorCategory').value;
+      updateDbExcelButton();
       const collectionName = category === "sentence" ? "sentences" : "words";
       const tbSelect = document.getElementById('dbEditorTb');
       const lessonSelect = document.getElementById('dbEditorLesson');
@@ -1570,6 +1665,13 @@
       printBtn.onclick = () => window.print();
       topBar.appendChild(printBtn);
       paper.appendChild(topBar);
+
+      const examTb = document.getElementById('genTb').value;
+      const examLesson = document.getElementById('genLesson').value;
+      const metaDiv = document.createElement('div');
+      metaDiv.className = "paper-meta";
+      metaDiv.innerText = `교과서: ${examTb}  ·  Unit ${examLesson}`;
+      paper.appendChild(metaDiv);
 
       const instructions = {
         "1": "다음 문장을 해석하시오.", "2": "다음 우리말을 영작하시오.",
