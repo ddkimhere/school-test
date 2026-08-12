@@ -1,0 +1,38 @@
+name: Remove School Test footer
+on:
+  push:
+    branches: [fix/remove-footer-20260813]
+    paths: ['tools/remove_footer.py', '.github/workflows/remove-footer.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove footer and footer-only layout rules
+        run: python tools/remove_footer.py
+      - name: Check inline JavaScript syntax
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script>(.*?)</script>', s, flags=re.S)
+          Path('/tmp/app.js').write_text('\n'.join(scripts),encoding='utf-8')
+          PY
+          node --check /tmp/app.js
+      - name: Verify footer removed
+        run: |
+          ! grep -q 'paper-footer' index.html
+          ! grep -q 'YMS ENGLISH · BUSONG' index.html
+      - name: Remove one-time patch files
+        run: rm -f tools/remove_footer.py .github/workflows/remove-footer.yml
+      - name: Commit patched app
+        run: |
+          git config user.name "ddkimhere"
+          git config user.email "ddkim1984@gmail.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "Remove test paper footer"
+          git push
