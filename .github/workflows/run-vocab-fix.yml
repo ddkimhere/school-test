@@ -1,0 +1,29 @@
+name: Run vocab fix
+
+on:
+  push:
+    branches: [fix/vocab-lesson-refresh-20260813]
+    paths: [.github/workflows/run-vocab-fix.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/vocab-lesson-refresh-20260813
+      - run: python .github/scripts/patch_vocab.py
+      - run: |
+          grep -q "async function fetchAndGenerate" index.html
+          grep -q "fetchLatestWordsFromDB" index.html
+          grep -q "DB 목록 새로고침" index.html
+      - run: |
+          rm -f .github/scripts/patch_vocab.py .github/workflows/run-vocab-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html .github/scripts/patch_vocab.py .github/workflows/run-vocab-fix.yml || true
+          git commit -m "Fix school-test vocab lesson loading"
+          git push
