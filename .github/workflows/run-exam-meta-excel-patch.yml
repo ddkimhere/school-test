@@ -21,6 +21,22 @@ jobs:
       - name: Apply patch
         run: python .github/scripts/patch_exam_meta_excel.py
 
+      - name: Repair escaped newline in generated JavaScript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('index.html')
+          raw = path.read_bytes()
+          newline = '\r\n' if b'\r\n' in raw else '\n'
+          text = raw.decode('utf-8')
+          bad = 'join("' + newline + '   ")'
+          good = 'join("\\n   ")'
+          if bad not in text:
+              raise SystemExit('Expected generated join newline was not found')
+          text = text.replace(bad, good, 1)
+          path.write_bytes(text.encode('utf-8'))
+          PY
+
       - name: Check inline JavaScript syntax
         run: |
           python - <<'PY'
