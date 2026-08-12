@@ -26,13 +26,18 @@
     .info-tip { background: #f1f5f9; border-left: 4px solid #0284c7; padding: 10px 15px; margin-bottom: 15px; font-size: 13px; color: #334155; }
     
     /* A4 시험지 기본 설정 */
-    .paper { background: white; padding: 25px 30px; border-radius: 8px; max-width: 800px; margin: 20px auto 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); position: relative; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; }
-    .paper-header-row { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 12px; }
-    .paper-instruction { font-size: 17px; font-weight: bold; color: #1e293b; margin: 0; }
-    .paper-meta { font-size: 13px; font-weight: bold; color: #475569; margin: 0 0 6px 0; letter-spacing: 0.1px; }
+    .paper { background: white; padding: 25px 30px; border: 1px solid #d9e0e8; border-radius: 8px; max-width: 800px; margin: 20px auto 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); position: relative; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; }
+    .yms-brand-strip { display: flex; justify-content: space-between; align-items: center; border-top: 5px solid #163a63; border-bottom: 1px solid #9aa8b6; padding: 10px 0 8px; margin-bottom: 0; }
+    .yms-brand-name { font-size: 20px; line-height: 1; font-weight: 900; letter-spacing: 1.2px; color: #163a63; }
+    .yms-brand-name span { font-size: 10px; font-weight: 700; letter-spacing: 2.8px; color: #64748b; margin-left: 7px; vertical-align: 2px; }
+    .yms-test-type { font-size: 10px; font-weight: 800; letter-spacing: 1.2px; color: #334155; border: 1px solid #9aa8b6; border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+    .paper-meta { font-size: 17px; font-weight: 800; color: #172b4d; margin: 10px 0 8px 0; letter-spacing: 0.15px; }
+    .paper-header-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; border-left: 4px solid #163a63; background: #f5f7fa; padding: 9px 12px; margin-bottom: 15px; }
+    .paper-instruction { font-size: 14px; font-weight: 700; color: #1e293b; margin: 0; line-height: 1.4; }
     
-    .student-info-box { display: flex; gap: 20px; font-size: 13.5px; font-weight: bold; color: #334155; align-items: center; }
-    .info-item { border-bottom: 1px solid #000; padding: 0 10px 1px 10px; display: inline-block; }
+    .student-info-box { display: flex; gap: 18px; font-size: 12.5px; font-weight: 700; color: #334155; align-items: center; white-space: nowrap; }
+    .info-item { border-bottom: 1px solid #334155; padding: 0 10px 1px 10px; display: inline-block; }
+    .paper-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 18px; padding-top: 7px; border-top: 1px solid #aeb8c4; color: #6b7280; font-size: 9.5px; font-weight: 700; letter-spacing: 0.5px; }
 
     .btn-print { background: #059669; color: white; font-weight: bold; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-bottom: 10px; float: right; font-family: inherit; }
     .btn-print:hover { background: #047857; }
@@ -60,10 +65,14 @@
       body { background: white; padding: 0; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; }
       h1, .tabs, .auth-box, #genFormSection, .btn-print, #dbTab { display: none !important; }
       .panel { padding: 0; box-shadow: none; }
-      .paper { box-shadow: none; padding: 0; max-width: 100%; margin: 0; }
-      .paper-header-row { border-bottom-color: #000; margin-bottom: 8px; padding-bottom: 4px; }
-      .paper-meta { color: #000; }
-      .student-info-box { color: #000; }
+      .paper { box-shadow: none; border: none; padding: 0; max-width: 100%; margin: 0; }
+      .yms-brand-strip { border-top-color: #000; border-bottom-color: #000; padding-top: 8px; padding-bottom: 7px; }
+      .yms-brand-name, .yms-brand-name span, .yms-test-type, .paper-meta { color: #000; }
+      .yms-test-type { border-color: #000; }
+      .paper-header-row { background: #fff; border-left-color: #000; margin-bottom: 10px; padding: 7px 10px; }
+      .paper-instruction, .student-info-box { color: #000; }
+      .info-item { border-bottom-color: #000; }
+      .paper-footer { color: #000; border-top-color: #000; margin-top: 12px; }
       
       .q-card { margin-bottom: 8px; }
       .q-text { font-size: 13px; }
@@ -1668,9 +1677,34 @@
 
       const examTb = document.getElementById('genTb').value;
       const examLesson = document.getElementById('genLesson').value;
+      const testTypeLabels = {
+        "1": "SENTENCE · TRANSLATION",
+        "2": "WRITING TEST",
+        "3": "WORD ORDER TEST",
+        "4": "CLOZE TEST",
+        "w1": "VOCABULARY TEST",
+        "w2": "VOCABULARY TEST",
+        "w3": "VOCABULARY · MIXED"
+      };
+
+      const brandStrip = document.createElement('div');
+      brandStrip.className = "yms-brand-strip";
+
+      const brandName = document.createElement('div');
+      brandName.className = "yms-brand-name";
+      brandName.innerHTML = `YMS <span>ENGLISH</span>`;
+
+      const testType = document.createElement('div');
+      testType.className = "yms-test-type";
+      testType.innerText = testTypeLabels[qType] || "ENGLISH TEST";
+
+      brandStrip.appendChild(brandName);
+      brandStrip.appendChild(testType);
+      paper.appendChild(brandStrip);
+
       const metaDiv = document.createElement('div');
       metaDiv.className = "paper-meta";
-      metaDiv.innerText = `교과서: ${examTb}  ·  Unit ${examLesson}`;
+      metaDiv.innerText = `${examTb}  ·  UNIT ${examLesson}`;
       paper.appendChild(metaDiv);
 
       const instructions = {
@@ -1740,6 +1774,16 @@
       });
 
       paper.appendChild(container);
+
+      const footer = document.createElement('div');
+      footer.className = "paper-footer";
+      const footerBrand = document.createElement('span');
+      footerBrand.innerText = "YMS ENGLISH · BUSONG";
+      const footerMeta = document.createElement('span');
+      footerMeta.innerText = `${examTb} · UNIT ${examLesson}`;
+      footer.appendChild(footerBrand);
+      footer.appendChild(footerMeta);
+      paper.appendChild(footer);
     }
   </script>
 </body>
