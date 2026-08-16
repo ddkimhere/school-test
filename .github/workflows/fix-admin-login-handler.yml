@@ -1,0 +1,33 @@
+name: Fix admin login handler
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-admin-login-handler.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch login handlers
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          if 'function handleLogin()' not in s:
+              marker='    function switchTab(tabId) {'
+              code='''    function handleLogin() {\n      const email = document.getElementById('loginEmail').value.trim();\n      const pw = document.getElementById('loginPw').value;\n      if (!email || !pw) {\n        alert('관리자 이메일과 비밀번호를 입력해 주세요.');\n        return;\n      }\n      auth.signInWithEmailAndPassword(email, pw)\n        .then(() => {\n          document.getElementById('dbTabBtn').style.display = 'inline-block';\n          document.getElementById('teacherLoginOverlay').classList.add('hidden');\n        })\n        .catch(err => {\n          alert('관리자 로그인 실패: ' + (err.message || err.code || '로그인 정보를 확인해 주세요.'));\n        });\n    }\n\n    function handleLogout() {\n      auth.signOut().then(() => {\n        document.getElementById('dbTabBtn').style.display = 'none';\n        location.href = location.pathname;\n      });\n    }\n\n'''
+              if marker not in s:
+                  raise SystemExit('switchTab marker not found')
+              s=s.replace(marker, code+marker, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit
+        run: |
+          git config user.name "ddkimhere"
+          git config user.email "ddkim1984@gmail.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "Fix admin email login handler"
+          git push
