@@ -1,0 +1,49 @@
+name: Fix admin login flow
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-admin-login-flow.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch admin login flow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+
+          old_btn='''      <button class="btn-submit" onclick="handleLogin()">로그인</button>'''
+          new_btn='''      <button class="btn-submit" id="adminLoginBtn" type="button" onclick="handleLogin()">로그인</button>\n      <div id="adminLoginStatus" style="min-height:22px;margin-top:10px;font-size:13px;font-weight:700;color:#64748b;"></div>'''
+          if old_btn in s and 'id="adminLoginStatus"' not in s:
+              s=s.replace(old_btn,new_btn,1)
+
+          old_admin='''    if (ADMIN_MODE) {\n      document.getElementById('teacherLoginOverlay').classList.add('hidden');\n      document.getElementById('dbTabBtn').style.display = 'inline-block';\n    } else if (sessionStorage.getItem('ymsSchoolTestTeacherAuth') === '1') {'''
+          new_admin='''    if (ADMIN_MODE) {\n      document.getElementById('teacherLoginOverlay').classList.add('hidden');\n      document.getElementById('dbTabBtn').style.display = 'inline-block';\n      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));\n      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));\n      document.getElementById('dbTab').classList.add('active');\n      document.getElementById('dbTabBtn').classList.add('active');\n    } else if (sessionStorage.getItem('ymsSchoolTestTeacherAuth') === '1') {'''
+          if old_admin in s:
+              s=s.replace(old_admin,new_admin,1)
+
+          old_login='''    function handleLogin() {\n      const email = document.getElementById('loginEmail').value.trim();\n      const pw = document.getElementById('loginPw').value;\n      auth.signInWithEmailAndPassword(email, pw).catch(err => alert("로그인 실패: 이메일과 비밀번호를 확인해주세요."));\n    }\n\n    function handleLogout() { auth.signOut(); }'''
+          new_login='''    async function handleLogin() {\n      const emailEl = document.getElementById('loginEmail');\n      const pwEl = document.getElementById('loginPw');\n      const status = document.getElementById('adminLoginStatus');\n      const btn = document.getElementById('adminLoginBtn');\n      const email = emailEl ? emailEl.value.trim() : '';\n      const pw = pwEl ? pwEl.value : '';\n      if (!email || !pw) {\n        if (status) { status.textContent = '이메일과 비밀번호를 모두 입력해 주세요.'; status.style.color = '#dc2626'; }\n        return;\n      }\n      if (status) { status.textContent = '로그인 확인 중...'; status.style.color = '#64748b'; }\n      if (btn) btn.disabled = true;\n      try {\n        const cred = await auth.signInWithEmailAndPassword(email, pw);\n        if (status) { status.textContent = '로그인 성공'; status.style.color = '#16a34a'; }\n        document.getElementById('loginSection').style.display = 'none';\n        document.getElementById('adminSection').style.display = 'block';\n        document.getElementById('dbTabBtn').style.display = 'inline-block';\n        document.getElementById('userEmailText').innerText = cred.user.email || email;\n        await refreshDbEditorFilters();\n      } catch (err) {\n        const code = err && err.code ? err.code : 'unknown';\n        const msgMap = {\n          'auth/invalid-credential':'이메일 또는 비밀번호가 맞지 않습니다.',\n          'auth/user-not-found':'등록된 관리자 계정을 찾을 수 없습니다.',\n          'auth/wrong-password':'비밀번호가 맞지 않습니다.',\n          'auth/invalid-email':'이메일 형식이 올바르지 않습니다.',\n          'auth/operation-not-allowed':'Firebase Authentication에서 이메일/비밀번호 로그인을 사용 설정해야 합니다.',\n          'auth/too-many-requests':'로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.',\n          'auth/network-request-failed':'네트워크 연결을 확인해 주세요.'\n        };\n        if (status) {\n          status.textContent = (msgMap[code] || ('로그인 실패: ' + (err.message || code))) + ' [' + code + ']';\n          status.style.color = '#dc2626';\n        }\n      } finally {\n        if (btn) btn.disabled = false;\n      }\n    }\n\n    function handleLogout() { auth.signOut(); }'''
+          if old_login not in s:
+              raise SystemExit('handleLogin marker not found')
+          s=s.replace(old_login,new_login,1)
+
+          key_marker="const portalPin = document.getElementById('portalPhonePin');"
+          enter_code="""const adminPw = document.getElementById('loginPw');\n    if (adminPw) adminPw.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });\n    """
+          if 'adminPw.addEventListener' not in s:
+              s=s.replace(key_marker,enter_code+key_marker,1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit
+        run: |
+          git config user.name "ddkimhere"
+          git config user.email "ddkim1984@gmail.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "Repair admin login flow and show auth errors"
+          git push
