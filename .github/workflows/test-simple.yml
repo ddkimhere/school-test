@@ -1,0 +1,10 @@
+name: Test simple workflow
+on:
+  push:
+    paths:
+      - '.github/workflows/test-simple.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello
