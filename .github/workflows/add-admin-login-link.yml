@@ -1,0 +1,44 @@
+name: Add admin login link
+on:
+  push:
+    paths:
+      - '.github/workflows/add-admin-login-link.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch admin login entry
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+
+          old='''      <button type="button" onclick="verifyPortalPin()">로그인</button>\n      <div id="portalLoginStatus" class="teacher-login-status"></div>'''
+          new='''      <button type="button" onclick="verifyPortalPin()">로그인</button>\n      <div id="portalLoginStatus" class="teacher-login-status"></div>\n      <button type="button" class="portal-admin-link" onclick="openAdminPortal()">운영자 로그인</button>'''
+          if 'class="portal-admin-link"' not in s:
+              if old not in s: raise SystemExit('teacher login marker not found')
+              s=s.replace(old,new,1)
+
+          css='''\n    .teacher-login-card .portal-admin-link{background:transparent!important;color:#64748b!important;border:0!important;box-shadow:none!important;font-size:12px!important;font-weight:700!important;padding:7px!important;margin-top:5px!important;text-decoration:underline;text-underline-offset:3px}\n    .teacher-login-card .portal-admin-link:hover{color:#1e3a5f!important}\n'''
+          if '.portal-admin-link{' not in s:
+              s=s.replace('    #dbTabBtn{display:none}\n','    #dbTabBtn{display:none}\n'+css,1)
+
+          marker='''    function verifyPortalPin() {'''
+          fn='''    function openAdminPortal() {\n      document.getElementById('teacherLoginOverlay').classList.add('hidden');\n      document.getElementById('dbTabBtn').style.display = 'inline-block';\n      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));\n      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));\n      document.getElementById('dbTab').classList.add('active');\n      document.getElementById('dbTabBtn').classList.add('active');\n      document.getElementById('loginSection').style.display = 'block';\n      document.getElementById('adminSection').style.display = 'none';\n      setTimeout(() => document.getElementById('loginEmail')?.focus(), 0);\n    }\n\n'''
+          if 'function openAdminPortal()' not in s:
+              if marker not in s: raise SystemExit('function marker not found')
+              s=s.replace(marker,fn+marker,1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit
+        run: |
+          git config user.name "ddkimhere"
+          git config user.email "ddkim1984@gmail.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "Add admin login entry below teacher PIN"
+          git push
