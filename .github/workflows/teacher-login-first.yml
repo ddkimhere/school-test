@@ -1,0 +1,124 @@
+name: Teacher login first UI
+on:
+  push:
+    paths:
+      - '.github/workflows/teacher-login-first.yml'
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch teacher login UI
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+
+          css='''
+    /* 선생님 로그인 우선 화면 */
+    .teacher-login-overlay{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#eef3fb,#f8fafc);display:flex;align-items:center;justify-content:center;padding:24px}
+    .teacher-login-overlay.hidden{display:none}
+    .teacher-login-card{width:min(410px,100%);background:#fff;border:1px solid #dbe4f0;border-radius:20px;padding:30px;box-shadow:0 24px 70px rgba(30,41,59,.16)}
+    .teacher-login-logo{width:48px;height:48px;border-radius:13px;background:#1e3a5f;color:#fff;display:grid;place-items:center;font-weight:900;margin-bottom:18px}
+    .teacher-login-card h2{margin:0;color:#1e293b;font-size:24px}
+    .teacher-login-card p{margin:7px 0 22px;color:#64748b;font-size:13px;line-height:1.6}
+    .teacher-login-card label{font-size:13px;color:#475569}
+    .teacher-login-card input{font-size:22px;letter-spacing:.28em;text-align:center;padding:13px 12px;margin-top:6px}
+    .teacher-login-card button{width:100%;margin-top:12px;padding:13px;border:0;border-radius:9px;background:#2563eb;color:#fff;font-weight:800;font-size:15px;cursor:pointer}
+    .teacher-login-status{min-height:20px;margin-top:9px;font-size:12px;font-weight:700;color:#64748b;text-align:center}
+    #genTab .auth-box{display:none!important}
+    #dbTabBtn{display:none}
+'''
+          if 'teacher-login-overlay' not in s:
+              s=s.replace('  </style>',css+'\n  </style>',1)
+
+          overlay='''
+  <div id="teacherLoginOverlay" class="teacher-login-overlay">
+    <div class="teacher-login-card">
+      <div class="teacher-login-logo">YMS</div>
+      <h2>선생님 로그인</h2>
+      <p>등록된 핸드폰 번호의 뒷자리 4자리를 입력해 주세요.<br>인증 후 내신 시험지 제작 화면으로 이동합니다.</p>
+      <label for="portalPhonePin">핸드폰 번호 뒷자리 4자리</label>
+      <input type="password" id="portalPhonePin" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off">
+      <button type="button" onclick="verifyPortalPin()">로그인</button>
+      <div id="portalLoginStatus" class="teacher-login-status"></div>
+    </div>
+  </div>
+'''
+          if 'id="teacherLoginOverlay"' not in s:
+              s=s.replace('<body>','<body>\n'+overlay,1)
+
+          old='<button class="tab-btn" onclick="switchTab(\'dbTab\')">⚙️ 지문/단어 DB 관리 (선생님 전용)</button>'
+          new='<button class="tab-btn" id="dbTabBtn" onclick="switchTab(\'dbTab\')">⚙️ 지문/단어 DB 관리 (운영자 전용)</button>'
+          s=s.replace(old,new,1)
+
+          marker='''    function verifyUserPin() {
+      const pin = document.getElementById('userPhonePin').value.trim();'''
+          replacement='''    function verifyPortalPin() {
+      const pin = document.getElementById('portalPhonePin').value.trim();
+      const status = document.getElementById('portalLoginStatus');
+      if (!/^\\d{4}$/.test(pin)) {
+        status.innerText = "핸드폰 번호 뒷자리 4자리를 입력해 주세요.";
+        status.style.color = "#dc2626";
+        return;
+      }
+      status.innerText = "인증 확인 중...";
+      status.style.color = "#64748b";
+      db.collection("allowed_users").doc(pin).get().then(doc => {
+        if (doc.exists) {
+          isPinVerified = true;
+          sessionStorage.setItem('ymsSchoolTestTeacherAuth','1');
+          document.getElementById('teacherLoginOverlay').classList.add('hidden');
+          document.getElementById('genFormSection').style.opacity = "1";
+          document.getElementById('genFormSection').style.pointerEvents = "auto";
+          loadDropdownsFromDB();
+        } else {
+          isPinVerified = false;
+          status.innerText = "등록되지 않은 번호입니다.";
+          status.style.color = "#dc2626";
+        }
+      }).catch(err => {
+        status.innerText = "인증 오류: " + err.message;
+        status.style.color = "#dc2626";
+      });
+    }
+
+    function verifyUserPin() {
+      const pin = document.getElementById('userPhonePin').value.trim();'''
+          if marker not in s:
+              raise SystemExit('verifyUserPin marker not found')
+          s=s.replace(marker,replacement,1)
+
+          # Add admin-only URL behavior and session login restore near auth listener
+          anchor='''    auth.onAuthStateChanged(user => {'''
+          pre='''    const ADMIN_MODE = new URLSearchParams(location.search).get('admin') === '1';
+    if (ADMIN_MODE) {
+      document.getElementById('teacherLoginOverlay').classList.add('hidden');
+      document.getElementById('dbTabBtn').style.display = 'inline-block';
+    } else if (sessionStorage.getItem('ymsSchoolTestTeacherAuth') === '1') {
+      document.getElementById('teacherLoginOverlay').classList.add('hidden');
+      isPinVerified = true;
+      document.getElementById('genFormSection').style.opacity = '1';
+      document.getElementById('genFormSection').style.pointerEvents = 'auto';
+      setTimeout(()=>loadDropdownsFromDB(),0);
+    }
+    const portalPin=document.getElementById('portalPhonePin');
+    if(portalPin) portalPin.addEventListener('keydown',e=>{if(e.key==='Enter')verifyPortalPin()});
+
+'''
+          if 'const ADMIN_MODE' not in s:
+              s=s.replace(anchor,pre+anchor,1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit changes
+        run: |
+          rm .github/workflows/teacher-login-first.yml
+          git config user.name "ddkimhere"
+          git config user.email "ddkim1984@gmail.com"
+          git add index.html .github/workflows/teacher-login-first.yml
+          git commit -m "Show teacher login first and hide DB management"
+          git push
