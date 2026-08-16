@@ -1,0 +1,36 @@
+name: Force visible admin login link
+on:
+  push:
+    paths:
+      - '.github/workflows/force-visible-admin-link.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch login card
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old='<button type="button" class="portal-admin-link" onclick="openAdminPortal()">운영자 로그인</button>'
+          new='''<a href="?admin=1" id="portalAdminDirect" style="display:block;width:100%;margin-top:10px;padding:11px 12px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#475569;text-align:center;text-decoration:none;font-size:13px;font-weight:800;">운영자 로그인</a>'''
+          if old in s:
+              s=s.replace(old,new,1)
+          elif 'id="portalAdminDirect"' not in s:
+              marker='<div id="portalLoginStatus" class="teacher-login-status"></div>'
+              if marker not in s:
+                  raise SystemExit('portal login marker not found')
+              s=s.replace(marker,marker+'\n      '+new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit
+        run: |
+          git config user.name "ddkimhere"
+          git config user.email "ddkim1984@gmail.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "Make admin login link visibly accessible"
+          git push
