@@ -246,7 +246,8 @@
         <label>비밀번호</label>
         <input type="password" id="loginPw" placeholder="관리자 비밀번호 입력">
       </div>
-      <button class="btn-submit" onclick="handleLogin()">로그인</button>
+      <button class="btn-submit" id="adminLoginBtn" type="button" onclick="handleLogin()">로그인</button>
+      <div id="adminLoginStatus" style="min-height:22px;margin-top:10px;font-size:13px;font-weight:700;color:#64748b;"></div>
     </div>
 
     <div id="adminSection" style="display:none;">
@@ -369,6 +370,10 @@
     if (ADMIN_MODE) {
       document.getElementById('teacherLoginOverlay').classList.add('hidden');
       document.getElementById('dbTabBtn').style.display = 'inline-block';
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('dbTab').classList.add('active');
+      document.getElementById('dbTabBtn').classList.add('active');
     } else if (sessionStorage.getItem('ymsSchoolTestTeacherAuth') === '1') {
       document.getElementById('teacherLoginOverlay').classList.add('hidden');
       isPinVerified = true;
@@ -376,6 +381,8 @@
       document.getElementById('genFormSection').style.pointerEvents = 'auto';
       setTimeout(()=>loadDropdownsFromDB(),0);
     }
+    const adminPw = document.getElementById('loginPw');
+    if (adminPw) adminPw.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
     const portalPin = document.getElementById('portalPhonePin');
     if (portalPin) portalPin.addEventListener('keydown', e => { if (e.key === 'Enter') verifyPortalPin(); });
 
@@ -1387,10 +1394,45 @@
       }
     }
 
-    function handleLogin() {
-      const email = document.getElementById('loginEmail').value.trim();
-      const pw = document.getElementById('loginPw').value;
-      auth.signInWithEmailAndPassword(email, pw).catch(err => alert("로그인 실패: 이메일과 비밀번호를 확인해주세요."));
+    async function handleLogin() {
+      const emailEl = document.getElementById('loginEmail');
+      const pwEl = document.getElementById('loginPw');
+      const status = document.getElementById('adminLoginStatus');
+      const btn = document.getElementById('adminLoginBtn');
+      const email = emailEl ? emailEl.value.trim() : '';
+      const pw = pwEl ? pwEl.value : '';
+      if (!email || !pw) {
+        if (status) { status.textContent = '이메일과 비밀번호를 모두 입력해 주세요.'; status.style.color = '#dc2626'; }
+        return;
+      }
+      if (status) { status.textContent = '로그인 확인 중...'; status.style.color = '#64748b'; }
+      if (btn) btn.disabled = true;
+      try {
+        const cred = await auth.signInWithEmailAndPassword(email, pw);
+        if (status) { status.textContent = '로그인 성공'; status.style.color = '#16a34a'; }
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('adminSection').style.display = 'block';
+        document.getElementById('dbTabBtn').style.display = 'inline-block';
+        document.getElementById('userEmailText').innerText = cred.user.email || email;
+        await refreshDbEditorFilters();
+      } catch (err) {
+        const code = err && err.code ? err.code : 'unknown';
+        const msgMap = {
+          'auth/invalid-credential':'이메일 또는 비밀번호가 맞지 않습니다.',
+          'auth/user-not-found':'등록된 관리자 계정을 찾을 수 없습니다.',
+          'auth/wrong-password':'비밀번호가 맞지 않습니다.',
+          'auth/invalid-email':'이메일 형식이 올바르지 않습니다.',
+          'auth/operation-not-allowed':'Firebase Authentication에서 이메일/비밀번호 로그인을 사용 설정해야 합니다.',
+          'auth/too-many-requests':'로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+          'auth/network-request-failed':'네트워크 연결을 확인해 주세요.'
+        };
+        if (status) {
+          status.textContent = (msgMap[code] || ('로그인 실패: ' + (err.message || code))) + ' [' + code + ']';
+          status.style.color = '#dc2626';
+        }
+      } finally {
+        if (btn) btn.disabled = false;
+      }
     }
 
     function handleLogout() { auth.signOut(); }
