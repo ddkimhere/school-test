@@ -1,0 +1,71 @@
+name: Increase sentence test spacing v2
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-sentence-spacing-v2.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch sentence spacing by question type
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8').replace('\r\n', '\n')
+
+          old_js = '''      paper.style.display = "block";
+      paper.innerHTML = "";
+'''
+          new_js = '''      paper.style.display = "block";
+      paper.dataset.qtype = qType;
+      paper.innerHTML = "";
+'''
+          if old_js in s:
+              s = s.replace(old_js, new_js, 1)
+          elif 'paper.dataset.qtype = qType;' not in s:
+              raise SystemExit('renderPaper anchor not found')
+
+          old_css = '''      .q-container.sentence-grid .q-card { margin-bottom: 6px; padding-bottom: 0; break-inside: avoid; page-break-inside: avoid; }
+      .q-container.sentence-grid .q-text { font-size: 11.5px; line-height: 1.3; margin-bottom: 2px; }
+      .q-container.sentence-grid .ans-space { height: 20px; margin-top: 2px; border-bottom-color: #000; }
+      .q-container.sentence-grid .word-box { font-size: 10.5px; line-height: 1.2; padding: 3px 6px; margin-bottom: 2px; }
+      .q-container.sentence-grid .q-card:nth-child(15n + 1):not(:first-child) { break-before: page; page-break-before: always; }
+'''
+          new_css = '''      .q-container.sentence-grid .q-card { margin-bottom: 5px; padding-bottom: 0; break-inside: avoid; page-break-inside: avoid; }
+      .q-container.sentence-grid .q-text { font-size: 11.5px; line-height: 1.3; margin-bottom: 2px; }
+      .q-container.sentence-grid .ans-space { height: 18px; margin-top: 2px; border-bottom-color: #000; }
+      .q-container.sentence-grid .word-box { font-size: 10.5px; line-height: 1.2; padding: 3px 6px; margin-bottom: 2px; }
+
+      /* 해석/영작은 실제 필기 공간이 넉넉하게 보이도록 크게 확보 */
+      .paper[data-qtype="1"] .q-container.sentence-grid .q-card,
+      .paper[data-qtype="2"] .q-container.sentence-grid .q-card { margin-bottom: 9px; }
+      .paper[data-qtype="1"] .q-container.sentence-grid .q-text,
+      .paper[data-qtype="2"] .q-container.sentence-grid .q-text { font-size: 12px; line-height: 1.3; margin-bottom: 2px; }
+      .paper[data-qtype="1"] .q-container.sentence-grid .ans-space,
+      .paper[data-qtype="2"] .q-container.sentence-grid .ans-space { height: 30px; margin-top: 2px; }
+
+      .q-container.sentence-grid .q-card:nth-child(15n + 1):not(:first-child) { break-before: page; page-break-before: always; }
+'''
+          if old_css in s:
+              s = s.replace(old_css, new_css, 1)
+          elif 'height: 30px' not in s:
+              raise SystemExit('sentence print CSS anchor not found')
+
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit index change
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Increase sentence answer line spacing"
+          git push
