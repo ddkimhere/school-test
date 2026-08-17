@@ -76,6 +76,13 @@
       .q-text { font-size: 13px; }
       .ans-space { height: 16px; border-bottom-color: #000; }
 
+      /* 문장 시험: A4 한 장에 15문항씩 */
+      .q-container.sentence-grid .q-card { margin-bottom: 3px; padding-bottom: 0; break-inside: avoid; page-break-inside: avoid; }
+      .q-container.sentence-grid .q-text { font-size: 11px; line-height: 1.2; margin-bottom: 1px; }
+      .q-container.sentence-grid .ans-space { height: 11px; margin-top: 1px; border-bottom-color: #000; }
+      .q-container.sentence-grid .word-box { font-size: 10px; line-height: 1.15; padding: 2px 5px; margin-bottom: 1px; }
+      .q-container.sentence-grid .q-card:nth-child(15n + 1):not(:first-child) { break-before: page; page-break-before: always; }
+
       /* 인쇄 시 단어 시험 2열 50개 맞춤 규격 */
       .q-container.vocab-grid { column-gap: 20px; row-gap: 1px; }
       .vocab-grid .q-card { margin-bottom: 4px; }
@@ -1860,7 +1867,7 @@
 
       // 문제 생성 컨테이너 (단어 시험일 경우 2열 그리드 클래스 추가)
       const container = document.createElement('div');
-      container.className = (category === "vocab") ? "q-container vocab-grid" : "q-container";
+      container.className = (category === "vocab") ? "q-container vocab-grid" : "q-container sentence-grid";
 
       dataList.forEach((item, idx) => {
         const card = document.createElement('div');
