@@ -90,6 +90,11 @@
       .paper[data-qtype="1"] .q-container.sentence-grid .ans-space,
       .paper[data-qtype="2"] .q-container.sentence-grid .ans-space { height: 30px; margin-top: 2px; }
 
+      /* 빈칸 채우기: 한 페이지 15문항 유지 + 가독성 확대 */
+      .paper[data-qtype="4"] .q-container.sentence-grid .q-card { margin-bottom: 9px; }
+      .paper[data-qtype="4"] .q-container.sentence-grid .q-text { font-size: 14px; line-height: 1.4; margin-bottom: 4px; }
+      .paper[data-qtype="4"] .q-container.sentence-grid .q-card > div:last-child { font-size: 12.5px !important; line-height: 1.4; margin-top: 0 !important; }
+
       .q-container.sentence-grid .q-card:nth-child(15n + 1):not(:first-child) { break-before: page; page-break-before: always; }
 
       /* 인쇄 시 단어 시험 2열 50개 맞춤 규격 */
