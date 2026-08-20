@@ -1,0 +1,365 @@
+name: Integrate grammar error test
+
+on:
+  push:
+    branches:
+      - feature/grammar-error-test-v2
+    paths:
+      - .github/workflows/integrate-grammar-error.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/grammar-error-test-v2
+
+      - name: Patch index.html
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('index.html')
+          text = path.read_text(encoding='utf-8')
+
+          def replace_once(old, new, label):
+              global text
+              if old not in text:
+                  raise SystemExit(f'anchor not found: {label}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+          """    /* 단어 전용 컴팩트 카드 (A4 50단어 맞춤) */
+""",
+          """    /* 문법 오류 찾기: 선택 범위를 하나의 지문처럼 표시 */
+    .grammar-passage { font-size: 14px; line-height: 2.05; text-align: justify; word-break: keep-all; }
+    .grammar-sentence { display: inline; margin-right: 4px; }
+    .grammar-sentence-num { font-weight: 800; margin-right: 3px; }
+
+    /* 단어 전용 컴팩트 카드 (A4 50단어 맞춤) */
+""",
+          'screen grammar css')
+
+          replace_once(
+          """      .paper[data-qtype=\"4\"] .q-container.sentence-grid .q-card > div:last-child {
+        font-size: 12.5px !important;
+        line-height: 1.35;
+        margin-top: 0 !important;
+      }
+
+      .q-container.sentence-grid .q-card:nth-child(15n + 1):not(:first-child) { break-before: page; page-break-before: always; }
+""",
+          """      .paper[data-qtype=\"4\"] .q-container.sentence-grid .q-card > div:last-child {
+        font-size: 12.5px !important;
+        line-height: 1.35;
+        margin-top: 0 !important;
+      }
+
+      /* 5. 문법 오류 찾기: 오류 표시는 하지 않고 필기 여백만 넉넉하게 */
+      .paper[data-qtype=\"5\"] .grammar-passage {
+        font-size: 13.5px;
+        line-height: 2.15;
+        text-align: justify;
+      }
+
+      .q-container.sentence-grid .q-card:nth-child(15n + 1):not(:first-child) { break-before: page; page-break-before: always; }
+""",
+          'print grammar css')
+
+          replace_once(
+          """        <div class=\"col\" id=\"blankOptionCol\" style=\"display: none;\">
+          <label>빈칸 개수 (비율)</label>
+          <select id=\"blankRatio\">
+            <option value=\"0.2\">조금 (약 20% 단어)</option>
+            <option value=\"0.4\" selected>보통 (약 40% 단어)</option>
+            <option value=\"0.6\">많이 (약 60% 단어)</option>
+            <option value=\"0.8\">매우 많이 (약 80% 단어)</option>
+          </select>
+        </div>
+      </div>
+""",
+          """        <div class=\"col\" id=\"blankOptionCol\" style=\"display: none;\">
+          <label>빈칸 개수 (비율)</label>
+          <select id=\"blankRatio\">
+            <option value=\"0.2\">조금 (약 20% 단어)</option>
+            <option value=\"0.4\" selected>보통 (약 40% 단어)</option>
+            <option value=\"0.6\">많이 (약 60% 단어)</option>
+            <option value=\"0.8\">매우 많이 (약 80% 단어)</option>
+          </select>
+        </div>
+        <div class=\"col\" id=\"grammarErrorOptionCol\" style=\"display: none;\">
+          <label>문법 오류 개수</label>
+          <input type=\"number\" id=\"grammarErrorCount\" value=\"5\" min=\"1\" max=\"20\" step=\"1\">
+        </div>
+      </div>
+""",
+          'grammar error count input')
+
+          replace_once(
+          """    function toggleBlankOption() {
+      const category = document.getElementById('genCategory').value;
+      const qType = document.getElementById('genType').value;
+      const blankCol = document.getElementById('blankOptionCol');
+      blankCol.style.display = (category === \"sentence\" && qType === \"4\") ? \"block\" : \"none\";
+    }
+""",
+          """    function toggleBlankOption() {
+      const category = document.getElementById('genCategory').value;
+      const qType = document.getElementById('genType').value;
+      const blankCol = document.getElementById('blankOptionCol');
+      const grammarCol = document.getElementById('grammarErrorOptionCol');
+      blankCol.style.display = (category === \"sentence\" && qType === \"4\") ? \"block\" : \"none\";
+      grammarCol.style.display = (category === \"sentence\" && qType === \"5\") ? \"block\" : \"none\";
+    }
+""",
+          'toggle grammar option')
+
+          replace_once(
+          """          <option value=\"3\">3. 단어 배열하기</option>
+          <option value=\"4\">4. 빈칸 채우기</option>
+""",
+          """          <option value=\"3\">3. 단어 배열하기</option>
+          <option value=\"4\">4. 빈칸 채우기</option>
+          <option value=\"5\">5. 문법 오류 찾기</option>
+""",
+          'grammar type option')
+
+          grammar_helpers = r'''
+    function grammarCoreParts(token) {
+      const m = token.match(/^([^A-Za-z]*)([A-Za-z]+)([^A-Za-z]*)$/);
+      return m ? { pre: m[1], core: m[2], post: m[3] } : null;
+    }
+
+    function preserveGrammarCase(original, replacement) {
+      if (original === original.toUpperCase()) return replacement.toUpperCase();
+      if (original[0] === original[0].toUpperCase()) return replacement[0].toUpperCase() + replacement.slice(1);
+      return replacement;
+    }
+
+    function replaceGrammarCore(token, replacement) {
+      const p = grammarCoreParts(token);
+      if (!p) return token;
+      return p.pre + preserveGrammarCase(p.core, replacement) + p.post;
+    }
+
+    function grammarThirdPerson(verb) {
+      if (verb === 'be') return 'is';
+      if (verb === 'have') return 'has';
+      if (verb === 'do') return 'does';
+      if (/[^aeiou]y$/i.test(verb)) return verb.slice(0, -1) + 'ies';
+      if (/(s|sh|ch|x|z|o)$/i.test(verb)) return verb + 'es';
+      return verb + 's';
+    }
+
+    const grammarDirectMap = {
+      am: 'are', is: 'are', are: 'is', was: 'were', were: 'was',
+      has: 'have', have: 'has', do: 'does', does: 'do',
+      a: 'an', an: 'a', this: 'these', these: 'this', that: 'those', those: 'that',
+      he: 'him', him: 'he', she: 'her', her: 'she', they: 'them', them: 'they',
+      we: 'us', us: 'we', i: 'me', me: 'i', my: 'me', our: 'us', their: 'them'
+    };
+
+    const grammarModalSet = new Set(['can', 'could', 'will', 'would', 'should', 'must', 'may', 'might', 'shall']);
+    const grammarBaseVerbSet = new Set([
+      'be','have','do','go','come','make','take','see','know','get','give','find','think','use','work','play','read','write',
+      'eat','drink','help','learn','study','become','keep','feel','leave','put','mean','tell','ask','seem','try','call','need',
+      'want','like','look','start','move','live','believe','bring','happen','provide','include','continue','change','watch',
+      'follow','stop','create','speak','spend','grow','open','walk','win','teach','offer','remember','consider','appear','buy',
+      'wait','serve','send','build','stay','fall','cut','reach','understand'
+    ]);
+
+    const grammarPpToBase = {
+      been:'be', done:'do', gone:'go', seen:'see', made:'make', taken:'take', written:'write', known:'know', given:'give',
+      found:'find', thought:'think', used:'use', come:'come', become:'become', read:'read', built:'build', sent:'send',
+      kept:'keep', left:'leave', felt:'feel', told:'tell', brought:'bring', bought:'buy', spoken:'speak', grown:'grow',
+      understood:'understand'
+    };
+
+    function getGrammarCandidates(sentence) {
+      const words = String(sentence || '').split(/\s+/).filter(Boolean);
+      const cores = words.map(w => (grammarCoreParts(w)?.core || '').toLowerCase());
+      const candidates = [];
+      const usedIndex = new Set();
+      const add = (index, replacement, kind) => {
+        if (index < 0 || index >= words.length || usedIndex.has(index) || !grammarCoreParts(words[index])) return;
+        if ((grammarCoreParts(words[index])?.core || '').toLowerCase() === replacement.toLowerCase()) return;
+        usedIndex.add(index);
+        candidates.push({ index, replacement, kind });
+      };
+
+      cores.forEach((core, i) => {
+        if (grammarDirectMap[core]) add(i, grammarDirectMap[core], 'basic');
+      });
+
+      for (let i = 0; i < cores.length - 1; i++) {
+        const core = cores[i];
+        let j = i + 1;
+        if (cores[j] === 'not' && j + 1 < cores.length) j++;
+        const next = cores[j];
+        if (grammarModalSet.has(core) && grammarBaseVerbSet.has(next)) add(j, grammarThirdPerson(next), 'modal');
+        if ((core === 'do' || core === 'does' || core === 'did') && grammarBaseVerbSet.has(next)) add(j, grammarThirdPerson(next), 'auxiliary');
+        if (core === 'to' && grammarBaseVerbSet.has(next)) add(j, grammarThirdPerson(next), 'infinitive');
+        if ((core === 'have' || core === 'has' || core === 'had') && grammarPpToBase[next]) add(j, grammarPpToBase[next], 'perfect');
+      }
+
+      return { words, candidates };
+    }
+
+    function makeGrammarErrors(items, requestedCount) {
+      const working = items.map(item => ({ ...item, grammarParsed: getGrammarCandidates(item.eng) }));
+      const bySentence = working.map((item, sentenceIndex) =>
+        item.grammarParsed.candidates.map(candidate => ({ ...candidate, sentenceIndex }))
+      );
+      const selected = [];
+      const used = new Set();
+
+      shuffle([...bySentence.keys()]).forEach(sentenceIndex => {
+        if (selected.length >= requestedCount) return;
+        const pool = bySentence[sentenceIndex].filter(c => !used.has(`${sentenceIndex}:${c.index}`));
+        if (!pool.length) return;
+        const pick = pool[Math.floor(Math.random() * pool.length)];
+        selected.push(pick);
+        used.add(`${sentenceIndex}:${pick.index}`);
+      });
+
+      if (selected.length < requestedCount) {
+        const rest = shuffle(bySentence.flat().filter(c => !used.has(`${c.sentenceIndex}:${c.index}`)));
+        for (const candidate of rest) {
+          if (selected.length >= requestedCount) break;
+          selected.push(candidate);
+          used.add(`${candidate.sentenceIndex}:${candidate.index}`);
+        }
+      }
+
+      const available = bySentence.flat().length;
+      if (selected.length < requestedCount) return { ok: false, available };
+
+      selected.forEach(candidate => {
+        const parsed = working[candidate.sentenceIndex].grammarParsed;
+        parsed.words[candidate.index] = replaceGrammarCore(parsed.words[candidate.index], candidate.replacement);
+      });
+
+      return {
+        ok: true,
+        items: working.map(item => ({ ...item, grammarText: item.grammarParsed.words.join(' ') })),
+        selected
+      };
+    }
+
+    function escapeTestHtml(value) {
+      return String(value ?? '').replace(/[&<>\"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#39;'
+      }[ch]));
+    }
+
+'''
+
+          replace_once(
+          """    async function fetchAndGenerate() {
+""",
+          grammar_helpers + """    async function fetchAndGenerate() {
+""",
+          'grammar helper functions')
+
+          replace_once(
+          """            let list = Array.from(map.values()).sort((a, b) => a.num - b.num);
+            renderPaper(list, qType, \"sentence\");
+""",
+          """            let list = Array.from(map.values()).sort((a, b) => a.num - b.num);
+
+            if (qType === \"5\") {
+              const requestedErrors = parseInt(document.getElementById('grammarErrorCount').value);
+              if (isNaN(requestedErrors) || requestedErrors < 1 || requestedErrors > 20) {
+                return alert(\"문법 오류 개수는 1~20개 사이로 입력해 주세요.\");
+              }
+              const grammarResult = makeGrammarErrors(list, requestedErrors);
+              if (!grammarResult.ok) {
+                return alert(`선택한 범위에서는 확실하게 만들 수 있는 문법 오류가 ${grammarResult.available}개입니다. 범위를 늘리거나 오류 개수를 줄여 주세요.`);
+              }
+              list = grammarResult.items;
+            }
+
+            renderPaper(list, qType, \"sentence\");
+""",
+          'grammar generation in fetch')
+
+          replace_once(
+          """        \"3\": \"WORD ORDER TEST\",
+        \"4\": \"CLOZE TEST\",
+""",
+          """        \"3\": \"WORD ORDER TEST\",
+        \"4\": \"CLOZE TEST\",
+        \"5\": \"GRAMMAR ERROR TEST\",
+""",
+          'grammar label')
+
+          replace_once(
+          """        \"3\": \"주어진 단어를 올바르게 배열하시오.\", \"4\": \"다음 문장의 빈칸에 알맞은 단어를 쓰시오.\",
+        \"w1\": \"다음 영어 단어의 뜻을 쓰시오.\", \"w2\": \"다음 뜻에 알맞은 영어 단어를 쓰시오.\", \"w3\": \"다음 알맞은 영단어 또는 뜻을 쓰시오.\"
+""",
+          """        \"3\": \"주어진 단어를 올바르게 배열하시오.\", \"4\": \"다음 문장의 빈칸에 알맞은 단어를 쓰시오.\",
+        \"5\": \"다음 글에서 문법상 잘못된 부분을 찾아 바르게 고치시오.\",
+        \"w1\": \"다음 영어 단어의 뜻을 쓰시오.\", \"w2\": \"다음 뜻에 알맞은 영어 단어를 쓰시오.\", \"w3\": \"다음 알맞은 영단어 또는 뜻을 쓰시오.\"
+""",
+          'grammar instruction')
+
+          replace_once(
+          """      titleDiv.className = \"paper-instruction\";
+      titleDiv.innerText = instructions[qType] || \"다음 문제를 푸시오.\";
+""",
+          """      titleDiv.className = \"paper-instruction\";
+      if (qType === \"5\") {
+        const grammarCount = parseInt(document.getElementById('grammarErrorCount').value) || 1;
+        titleDiv.innerText = `다음 글에는 문법상 잘못된 부분이 총 ${grammarCount}곳 있습니다. 잘못된 부분을 찾아 바르게 고치시오.`;
+      } else {
+        titleDiv.innerText = instructions[qType] || \"다음 문제를 푸시오.\";
+      }
+""",
+          'grammar count in instruction')
+
+          replace_once(
+          """      // 문제 생성 컨테이너 (단어 시험일 경우 2열 그리드 클래스 추가)
+      const container = document.createElement('div');
+      container.className = (category === \"vocab\") ? \"q-container vocab-grid\" : \"q-container sentence-grid\";
+
+      dataList.forEach((item, idx) => {
+""",
+          """      // 문제 생성 컨테이너 (단어 시험일 경우 2열 그리드 클래스 추가)
+      const container = document.createElement('div');
+      container.className = (category === \"vocab\") ? \"q-container vocab-grid\" : \"q-container sentence-grid\";
+
+      if (category === \"sentence\" && qType === \"5\") {
+        const passage = document.createElement('div');
+        passage.className = \"grammar-passage\";
+        passage.innerHTML = dataList.map((item, idx) =>
+          `<span class=\"grammar-sentence\"><span class=\"grammar-sentence-num\">${idx + 1}.</span>${escapeTestHtml(item.grammarText || item.eng)}</span>`
+        ).join(' ');
+        container.appendChild(passage);
+        paper.appendChild(container);
+        return;
+      }
+
+      dataList.forEach((item, idx) => {
+""",
+          'grammar passage rendering')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit integrated grammar test
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "No changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- index.html
+          git commit -m "Integrate grammar error test into main generator"
+          git push origin HEAD:feature/grammar-error-test-v2
