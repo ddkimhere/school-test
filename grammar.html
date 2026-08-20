@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YMS Grammar Error Test</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family:'Malgun Gothic','맑은 고딕',sans-serif; margin:0; padding:20px; background:#f4f6f9; color:#333; }
+    h1 { margin:0 0 18px; color:#1e293b; }
+    .panel { background:white; padding:25px; border-radius:8px; box-shadow:0 4px 6px -1px rgba(0,0,0,.1); }
+    .row { display:flex; gap:15px; margin-bottom:15px; }
+    .col { flex:1; }
+    label { display:block; font-weight:bold; margin-bottom:5px; color:#475569; }
+    select,input { width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:15px; font-family:inherit; }
+    .btn-submit { width:100%; padding:12px 20px; border:0; border-radius:6px; background:#2563eb; color:white; font-weight:bold; font-size:16px; cursor:pointer; font-family:inherit; }
+    .status { font-size:13px; font-weight:700; color:#64748b; margin:10px 0 0; }
+    .paper { background:white; padding:25px 30px; border:1px solid #d9e0e8; border-radius:8px; max-width:800px; margin:20px auto 0; box-shadow:0 4px 10px rgba(0,0,0,.05); }
+    .btn-print { float:right; background:#059669; color:#fff; font-weight:bold; border:0; padding:8px 16px; border-radius:6px; cursor:pointer; margin-bottom:10px; }
+    .topbar { overflow:hidden; }
+    .yms-brand-strip { display:flex; justify-content:space-between; align-items:center; border-top:5px solid #163a63; border-bottom:1px solid #9aa8b6; padding:10px 0 8px; }
+    .yms-brand-name { font-size:20px; line-height:1; font-weight:900; letter-spacing:1.2px; color:#163a63; }
+    .yms-brand-name span { font-size:10px; font-weight:700; letter-spacing:2.8px; color:#64748b; margin-left:7px; vertical-align:2px; }
+    .yms-test-type { font-size:10px; font-weight:800; letter-spacing:1.2px; color:#334155; border:1px solid #9aa8b6; border-radius:999px; padding:4px 10px; white-space:nowrap; }
+    .paper-meta { font-size:17px; font-weight:800; color:#172b4d; margin:10px 0 8px; }
+    .paper-header-row { display:flex; justify-content:space-between; align-items:center; gap:18px; border-left:4px solid #163a63; background:#f5f7fa; padding:9px 12px; margin-bottom:15px; }
+    .paper-instruction { font-size:14px; font-weight:700; color:#1e293b; margin:0; line-height:1.45; }
+    .student-info-box { display:flex; gap:18px; font-size:12.5px; font-weight:700; color:#334155; align-items:center; white-space:nowrap; }
+    .info-item { border-bottom:1px solid #334155; padding:0 10px 1px; display:inline-block; }
+    .grammar-passage { font-size:13.5px; line-height:2.05; text-align:justify; word-break:keep-all; }
+    .grammar-sentence { display:block; margin-bottom:5px; min-height:31px; }
+    .grammar-num { font-weight:800; margin-right:5px; }
+    .teacher-note { margin-top:12px; font-size:12px; color:#64748b; }
+    .login-overlay { position:fixed; inset:0; z-index:9999; background:linear-gradient(135deg,#eef3fb,#f8fafc); display:flex; align-items:center; justify-content:center; padding:24px; }
+    .login-overlay.hidden { display:none; }
+    .login-card { width:min(410px,100%); background:#fff; border:1px solid #dbe4f0; border-radius:20px; padding:30px; box-shadow:0 24px 70px rgba(30,41,59,.16); }
+    .login-logo { width:48px; height:48px; border-radius:13px; background:#1e3a5f; color:#fff; display:grid; place-items:center; font-weight:900; margin-bottom:18px; }
+    .login-card h2 { margin:0; color:#1e293b; font-size:24px; }
+    .login-card p { margin:7px 0 22px; color:#64748b; font-size:13px; line-height:1.6; }
+    .login-card input { font-size:22px; letter-spacing:.28em; text-align:center; padding:13px 12px; margin-top:6px; }
+    .login-card button { width:100%; margin-top:12px; padding:13px; border:0; border-radius:9px; background:#2563eb; color:#fff; font-weight:800; font-size:15px; cursor:pointer; }
+    @media (max-width:760px){ .row{flex-direction:column}.paper-header-row{align-items:flex-start;flex-direction:column}.student-info-box{white-space:normal;flex-wrap:wrap} }
+    @media print {
+      @page { size:A4; margin:8mm 10mm; }
+      body { background:white; padding:0; }
+      h1,#formPanel,.btn-print,.teacher-note,.login-overlay { display:none !important; }
+      .paper { box-shadow:none; border:0; padding:0; max-width:100%; margin:0; }
+      .yms-brand-strip { border-top-color:#000; border-bottom-color:#000; padding-top:8px; padding-bottom:7px; }
+      .yms-brand-name,.yms-brand-name span,.yms-test-type,.paper-meta { color:#000; }
+      .yms-test-type { border-color:#000; }
+      .paper-header-row { background:#fff; border-left-color:#000; margin-bottom:10px; padding:7px 10px; }
+      .paper-instruction,.student-info-box { color:#000; }
+      .info-item { border-bottom-color:#000; }
+      .grammar-passage { font-size:13px; line-height:1.95; }
+      .grammar-sentence { margin-bottom:4px; min-height:29px; break-inside:avoid; page-break-inside:avoid; }
+    }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-card">
+      <div class="login-logo">YMS</div>
+      <h2>선생님 로그인</h2>
+      <p>등록된 핸드폰 번호의 뒷자리 4자리를 입력해 주세요.</p>
+      <label for="phonePin">핸드폰 번호 뒷자리 4자리</label>
+      <input type="password" id="phonePin" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off">
+      <button type="button" onclick="verifyPin()">로그인</button>
+      <div id="loginStatus" class="status"></div>
+    </div>
+  </div>
+
+  <h1>📚 YMS Grammar Error Test</h1>
+  <div class="panel" id="formPanel">
+    <div class="row">
+      <div class="col">
+        <label>교과서 선택</label>
+        <select id="genTb" onchange="updateLessonDropdown()"></select>
+      </div>
+      <div class="col">
+        <label>과/단원 선택</label>
+        <select id="genLesson" onchange="updateSentenceDropdowns()"></select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <label>시작 문장 선택</label>
+        <select id="genStart"></select>
+      </div>
+      <div class="col">
+        <label>끝 문장 선택</label>
+        <select id="genEnd"></select>
+      </div>
+      <div class="col">
+        <label>문법 오류 개수</label>
+        <select id="grammarErrorCount">
+          <option value="1">1개</option><option value="2">2개</option><option value="3" selected>3개</option>
+          <option value="4">4개</option><option value="5">5개</option><option value="6">6개</option>
+          <option value="7">7개</option><option value="8">8개</option><option value="9">9개</option><option value="10">10개</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-submit" onclick="generateGrammarTest()">문법 오류 찾기 시험지 만들기</button>
+    <div id="formStatus" class="status">시작 문장과 끝 문장을 정한 뒤 오류 개수를 선택하세요.</div>
+  </div>
+
+  <div class="paper" id="paperArea" style="display:none;"></div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBQU7tXEVtN-W-KbMWlXyevqPnaQoUND40",
+      authDomain: "school-test-b8d9c.firebaseapp.com",
+      projectId: "school-test-b8d9c",
+      storageBucket: "school-test-b8d9c.firebasestorage.app",
+      messagingSenderId: "908472962565",
+      appId: "1:908472962565:web:365396e9008d1258f3d66c",
+      measurementId: "G-DZGC4P918C"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    let sentenceMap = {};
+
+    const pinInput = document.getElementById('phonePin');
+    pinInput.addEventListener('keydown', e => { if(e.key === 'Enter') verifyPin(); });
+
+    if(sessionStorage.getItem('ymsSchoolTestTeacherAuth') === '1'){
+      document.getElementById('loginOverlay').classList.add('hidden');
+      loadSentenceDB();
+    }
+
+    function verifyPin(){
+      const pin = pinInput.value.trim();
+      const status = document.getElementById('loginStatus');
+      if(!/^\d{4}$/.test(pin)){
+        status.textContent = '핸드폰 번호 뒷자리 4자리를 입력해 주세요.';
+        status.style.color = '#dc2626';
+        return;
+      }
+      status.textContent = '인증 확인 중...';
+      status.style.color = '#64748b';
+      db.collection('allowed_users').doc(pin).get().then(doc => {
+        if(!doc.exists){
+          status.textContent = '등록되지 않은 번호입니다.';
+          status.style.color = '#dc2626';
+          return;
+        }
+        sessionStorage.setItem('ymsSchoolTestTeacherAuth','1');
+        document.getElementById('loginOverlay').classList.add('hidden');
+        loadSentenceDB();
+      }).catch(err => {
+        status.textContent = '인증 오류: ' + err.message;
+        status.style.color = '#dc2626';
+      });
+    }
+
+    async function loadSentenceDB(){
+      const status = document.getElementById('formStatus');
+      status.textContent = '문장 DB를 불러오는 중입니다...';
+      try{
+        const snap = await db.collection('sentences').get();
+        sentenceMap = {};
+        snap.forEach(doc => {
+          const d = doc.data();
+          const tb = d.tbCode;
+          const lesson = Number(d.lesson);
+          const num = Number(d.num);
+          if(!tb || !Number.isFinite(lesson) || !Number.isFinite(num) || !d.eng) return;
+          if(!sentenceMap[tb]) sentenceMap[tb] = {};
+          if(!sentenceMap[tb][lesson]) sentenceMap[tb][lesson] = [];
+          if(!sentenceMap[tb][lesson].some(x => x.num === num)){
+            sentenceMap[tb][lesson].push({num,eng:d.eng,kor:d.kor || ''});
+          }
+        });
+        Object.values(sentenceMap).forEach(byLesson => Object.values(byLesson).forEach(list => list.sort((a,b)=>a.num-b.num)));
+        const tbSelect = document.getElementById('genTb');
+        tbSelect.innerHTML = '';
+        Object.keys(sentenceMap).sort((a,b)=>a.localeCompare(b,'ko-KR',{numeric:true})).forEach(tb => {
+          const opt = document.createElement('option'); opt.value = tb; opt.textContent = tb; tbSelect.appendChild(opt);
+        });
+        updateLessonDropdown();
+        status.textContent = '시작 문장과 끝 문장을 정한 뒤 오류 개수를 선택하세요.';
+      }catch(err){
+        status.textContent = 'DB 목록 로드 실패: ' + err.message;
+        status.style.color = '#dc2626';
+      }
+    }
+
+    function updateLessonDropdown(){
+      const tb = document.getElementById('genTb').value;
+      const sel = document.getElementById('genLesson');
+      sel.innerHTML = '';
+      if(!tb || !sentenceMap[tb]) return;
+      Object.keys(sentenceMap[tb]).map(Number).sort((a,b)=>a-b).forEach(lesson => {
+        const opt = document.createElement('option');
+        opt.value = lesson; opt.textContent = `${lesson}과 (${sentenceMap[tb][lesson].length}문장)`;
+        sel.appendChild(opt);
+      });
+      updateSentenceDropdowns();
+    }
+
+    function updateSentenceDropdowns(){
+      const tb = document.getElementById('genTb').value;
+      const lesson = Number(document.getElementById('genLesson').value);
+      const startSel = document.getElementById('genStart');
+      const endSel = document.getElementById('genEnd');
+      startSel.innerHTML = ''; endSel.innerHTML = '';
+      const list = sentenceMap[tb]?.[lesson] || [];
+      list.forEach(item => {
+        const preview = item.eng.length > 34 ? item.eng.slice(0,34) + '...' : item.eng;
+        const a = document.createElement('option'); a.value = item.num; a.textContent = `${item.num}번: ${preview}`; startSel.appendChild(a);
+        const b = document.createElement('option'); b.value = item.num; b.textContent = `${item.num}번: ${preview}`; endSel.appendChild(b);
+      });
+      if(list.length) endSel.value = list[list.length-1].num;
+    }
+
+    function coreParts(token){
+      const m = token.match(/^([^A-Za-z]*)([A-Za-z]+)([^A-Za-z]*)$/);
+      return m ? {pre:m[1],core:m[2],post:m[3]} : null;
+    }
+    function preserveCase(original,replacement){
+      if(original === original.toUpperCase()) return replacement.toUpperCase();
+      if(original[0] === original[0].toUpperCase()) return replacement[0].toUpperCase() + replacement.slice(1);
+      return replacement;
+    }
+    function replaceCore(token,replacement){
+      const p = coreParts(token); if(!p) return token;
+      return p.pre + preserveCase(p.core,replacement) + p.post;
+    }
+    function thirdPerson(v){
+      if(v === 'be') return 'is';
+      if(v === 'have') return 'has';
+      if(v === 'do') return 'does';
+      if(/[^aeiou]y$/i.test(v)) return v.slice(0,-1) + 'ies';
+      if(/(s|sh|ch|x|z|o)$/i.test(v)) return v + 'es';
+      return v + 's';
+    }
+
+    const directMap = {
+      am:'are', is:'are', are:'is', was:'were', were:'was',
+      has:'have', have:'has', do:'does', does:'do',
+      a:'an', an:'a', this:'these', these:'this', that:'those', those:'that',
+      much:'many', many:'much', few:'little', little:'few', less:'fewer', fewer:'less',
+      he:'him', him:'he', she:'her', her:'she', they:'them', them:'they', we:'us', us:'we', i:'me', me:'i',
+      my:'me', our:'us', their:'them', your:'you', his:'him'
+    };
+    const modalSet = new Set(['can','could','will','would','should','must','may','might','shall']);
+    const baseVerbSet = new Set(['be','have','do','go','come','make','take','see','know','get','give','find','think','use','work','play','read','write','eat','drink','help','learn','study','become','keep','feel','leave','put','mean','tell','ask','seem','try','call','need','want','like','look','start','move','live','believe','bring','happen','provide','include','continue','change','watch','follow','stop','create','speak','spend','grow','open','walk','win','teach','offer','remember','consider','appear','buy','wait','serve','send','build','stay','fall','cut','reach','understand']);
+    const ppToBase = {been:'be',done:'do',gone:'go',seen:'see',made:'make',taken:'take',written:'write',known:'know',given:'give',found:'find',thought:'think',used:'use',come:'come',become:'become',read:'read',built:'build',sent:'send',kept:'keep',left:'leave',felt:'feel',told:'tell',brought:'bring',bought:'buy',spoken:'speak',grown:'grow',understood:'understand'};
+
+    function getSentenceCandidates(sentence){
+      const words = sentence.split(/\s+/);
+      const candidates = [];
+      const seen = new Set();
+      const add = (index,replacement,kind) => {
+        if(index < 0 || index >= words.length) return;
+        const key = String(index);
+        if(seen.has(key)) return;
+        if(!coreParts(words[index])) return;
+        seen.add(key);
+        candidates.push({index,replacement,kind});
+      };
+      const cores = words.map(w => (coreParts(w)?.core || '').toLowerCase());
+
+      cores.forEach((c,i) => {
+        if(directMap[c]) add(i,directMap[c],'basic');
+      });
+
+      for(let i=0;i<cores.length-1;i++){
+        const c = cores[i];
+        let j = i+1;
+        if(cores[j] === 'not' && j+1 < cores.length) j++;
+        const next = cores[j];
+        if(modalSet.has(c) && baseVerbSet.has(next)) add(j,thirdPerson(next),'modal');
+        if((c === 'do' || c === 'does' || c === 'did') && baseVerbSet.has(next)) add(j,thirdPerson(next),'aux');
+        if(c === 'to' && baseVerbSet.has(next)) add(j,thirdPerson(next),'infinitive');
+        if((c === 'have' || c === 'has' || c === 'had') && ppToBase[next]) add(j,ppToBase[next],'perfect');
+      }
+      return {words,candidates};
+    }
+
+    function makeGrammarErrors(items,requested){
+      const working = items.map(item => ({...item, parsed:getSentenceCandidates(item.eng)}));
+      const availableBySentence = working.map((x,sentenceIndex) => x.parsed.candidates.map(c => ({...c,sentenceIndex})));
+      const chosen = [];
+      const used = new Set();
+
+      const sentenceOrder = [...availableBySentence.keys()].sort(()=>Math.random()-.5);
+      sentenceOrder.forEach(si => {
+        if(chosen.length >= requested) return;
+        const pool = availableBySentence[si].filter(c => !used.has(`${si}:${c.index}`));
+        if(!pool.length) return;
+        const pick = pool[Math.floor(Math.random()*pool.length)];
+        chosen.push(pick); used.add(`${si}:${pick.index}`);
+      });
+
+      if(chosen.length < requested){
+        const rest = availableBySentence.flat().filter(c => !used.has(`${c.sentenceIndex}:${c.index}`)).sort(()=>Math.random()-.5);
+        for(const c of rest){
+          if(chosen.length >= requested) break;
+          chosen.push(c); used.add(`${c.sentenceIndex}:${c.index}`);
+        }
+      }
+      if(chosen.length < requested) return {ok:false,available:chosen.length};
+
+      chosen.forEach(c => {
+        const target = working[c.sentenceIndex].parsed.words[c.index];
+        working[c.sentenceIndex].parsed.words[c.index] = replaceCore(target,c.replacement);
+      });
+      return {
+        ok:true,
+        items:working.map(x => ({...x,mutated:x.parsed.words.join(' ')})),
+        chosen
+      };
+    }
+
+    function escapeHtml(str){
+      return String(str).replace(/[&<>'"]/g,ch=>({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[ch]));
+    }
+
+    function generateGrammarTest(){
+      const tb = document.getElementById('genTb').value;
+      const lesson = Number(document.getElementById('genLesson').value);
+      const start = Number(document.getElementById('genStart').value);
+      const end = Number(document.getElementById('genEnd').value);
+      const errorCount = Number(document.getElementById('grammarErrorCount').value);
+      const status = document.getElementById('formStatus');
+      if(!tb || !Number.isFinite(lesson) || !Number.isFinite(start) || !Number.isFinite(end)) return;
+      if(start > end){ status.textContent = '시작 문장은 끝 문장보다 앞이어야 합니다.'; status.style.color='#dc2626'; return; }
+      const list = (sentenceMap[tb]?.[lesson] || []).filter(x => x.num >= start && x.num <= end);
+      if(!list.length){ status.textContent = '선택 범위에 문장이 없습니다.'; status.style.color='#dc2626'; return; }
+
+      const result = makeGrammarErrors(list,errorCount);
+      if(!result.ok){
+        status.textContent = `선택한 문장에서는 확실하게 만들 수 있는 문법 오류가 ${result.available}개뿐입니다. 범위를 늘리거나 오류 개수를 줄여 주세요.`;
+        status.style.color='#dc2626';
+        return;
+      }
+      status.style.color='#059669';
+      status.textContent = `문법 오류 ${errorCount}개를 넣어 시험지를 만들었습니다.`;
+      renderPaper(result.items,errorCount,tb,lesson,start,end);
+    }
+
+    function renderPaper(items,errorCount,tb,lesson,start,end){
+      const paper = document.getElementById('paperArea');
+      paper.style.display = 'block';
+      const sentences = items.map((item,idx)=>`<span class="grammar-sentence"><span class="grammar-num">${idx+1}.</span>${escapeHtml(item.mutated)}</span>`).join('');
+      paper.innerHTML = `
+        <div class="topbar"><button class="btn-print" onclick="window.print()">🖨️ 시험지 인쇄하기</button></div>
+        <div class="yms-brand-strip"><div class="yms-brand-name">YMS <span>ENGLISH</span></div><div class="yms-test-type">GRAMMAR ERROR TEST</div></div>
+        <div class="paper-meta">${escapeHtml(tb)} · UNIT ${lesson} · SENTENCE ${start}-${end}</div>
+        <div class="paper-header-row">
+          <div class="paper-instruction">다음 글에는 문법상 잘못된 부분이 총 <b>${errorCount}곳</b> 있습니다. 잘못된 부분을 찾아 바르게 고치시오.</div>
+          <div class="student-info-box"><span>날짜: <span class="info-item" style="width:90px"></span></span><span>이름: <span class="info-item" style="width:90px"></span></span></div>
+        </div>
+        <div class="grammar-passage">${sentences}</div>
+        <div class="teacher-note">※ 오류 위치는 표시되지 않습니다. 별도의 고치는 칸 없이 문장 아래 공간을 활용하도록 구성했습니다.</div>
+      `;
+      paper.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+  </script>
+</body>
+</html>
