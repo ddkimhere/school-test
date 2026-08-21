@@ -5,1966 +5,278 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YMS Middle School Test Program</title>
   <style>
-    * { box-sizing: border-box; }
-    body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; margin: 0; padding: 20px; background: #f4f6f9; color: #333; }
-    h1 { margin-top: 0; color: #1e293b; }
-    .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #cbd5e1; }
-    .tab-btn { padding: 12px 24px; font-size: 16px; font-weight: bold; border: none; background: #e2e8f0; cursor: pointer; border-radius: 8px 8px 0 0; font-family: inherit; }
-    .tab-btn.active { background: #2563eb; color: white; }
-    .panel { display: none; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-    .panel.active { display: block; }
-    .form-group { margin-bottom: 15px; }
-    label { display: block; font-weight: bold; margin-bottom: 5px; color: #475569; }
-    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 15px; font-family: inherit; }
-    textarea { height: 140px; resize: vertical; line-height: 1.5; font-family: inherit; }
-    .row { display: flex; gap: 15px; }
-    .col { flex: 1; }
-    button.btn-submit { background: #2563eb; color: white; font-weight: bold; padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; width: 100%; font-size: 16px; font-family: inherit; }
-    button.btn-submit:hover { background: #1d4ed8; }
-    .admin-bar { background: #e0f2fe; border: 1px solid #bae6fd; padding: 12px 20px; border-radius: 6px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
-    .auth-box { background: #fffbe3; border: 1px solid #fde047; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
-    .info-tip { background: #f1f5f9; border-left: 4px solid #0284c7; padding: 10px 15px; margin-bottom: 15px; font-size: 13px; color: #334155; }
-    
-    /* A4 시험지 기본 설정 */
-    .paper { background: white; padding: 25px 30px; border: 1px solid #d9e0e8; border-radius: 8px; max-width: 800px; margin: 20px auto 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); position: relative; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; }
-    .yms-brand-strip { display: flex; justify-content: space-between; align-items: center; border-top: 5px solid #163a63; border-bottom: 1px solid #9aa8b6; padding: 10px 0 8px; margin-bottom: 0; }
-    .yms-brand-name { font-size: 20px; line-height: 1; font-weight: 900; letter-spacing: 1.2px; color: #163a63; }
-    .yms-brand-name span { font-size: 10px; font-weight: 700; letter-spacing: 2.8px; color: #64748b; margin-left: 7px; vertical-align: 2px; }
-    .yms-test-type { font-size: 10px; font-weight: 800; letter-spacing: 1.2px; color: #334155; border: 1px solid #9aa8b6; border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
-    .paper-meta { font-size: 17px; font-weight: 800; color: #172b4d; margin: 10px 0 8px 0; letter-spacing: 0.15px; }
-    .paper-header-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; border-left: 4px solid #163a63; background: #f5f7fa; padding: 9px 12px; margin-bottom: 15px; }
-    .paper-instruction { font-size: 14px; font-weight: 700; color: #1e293b; margin: 0; line-height: 1.4; }
-    
-    .student-info-box { display: flex; gap: 18px; font-size: 12.5px; font-weight: 700; color: #334155; align-items: center; white-space: nowrap; }
-    .info-item { border-bottom: 1px solid #334155; padding: 0 10px 1px 10px; display: inline-block; }
-
-    .btn-print { background: #059669; color: white; font-weight: bold; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-bottom: 10px; float: right; font-family: inherit; }
-    .btn-print:hover { background: #047857; }
-    
-    /* 문제 컨테이너 영역 (문장/단어 시험 구분을 위함) */
-    .q-container { display: block; }
-    
-    /* 단어 시험 2열(2컬럼) 50개 전용 레이아웃 */
-    .q-container.vocab-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 30px; row-gap: 2px; }
-
-    /* 문장용 기본 카드 */
-    .q-card { margin-bottom: 10px; padding-bottom: 0px; border-bottom: none; page-break-inside: avoid; }
-    .q-text { font-size: 13.5px; line-height: 1.35; margin-bottom: 4px; }
-    .ans-space { border-bottom: 1px solid #475569; height: 18px; margin-top: 2px; }
-    .word-box { background: #f1f5f9; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-bottom: 2px; font-weight: bold; font-size: 12.5px; font-family: inherit; }
-
-    /* 단어 전용 컴팩트 카드 (A4 50단어 맞춤) */
-    .vocab-grid .q-card { margin-bottom: 6px; }
-    .vocab-grid .q-text { font-size: 12px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .vocab-grid .ans-space { height: 14px; margin-top: 1px; border-bottom-color: #333; }
-
-    /* 인쇄 전용 CSS */
-    @media print {
-      @page { size: A4; margin: 8mm 10mm; }
-      body { background: white; padding: 0; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; }
-      h1, .tabs, .auth-box, #genFormSection, .btn-print, #dbTab { display: none !important; }
-      .panel { padding: 0; box-shadow: none; }
-      .paper { box-shadow: none; border: none; padding: 0; max-width: 100%; margin: 0; }
-      .yms-brand-strip { border-top-color: #000; border-bottom-color: #000; padding-top: 8px; padding-bottom: 7px; }
-      .yms-brand-name, .yms-brand-name span, .yms-test-type, .paper-meta { color: #000; }
-      .yms-test-type { border-color: #000; }
-      .paper-header-row { background: #fff; border-left-color: #000; margin-bottom: 10px; padding: 7px 10px; }
-      .paper-instruction, .student-info-box { color: #000; }
-      .info-item { border-bottom-color: #000; }
-      
-      .q-card { margin-bottom: 8px; }
-      .q-text { font-size: 13px; }
-      .ans-space { height: 16px; border-bottom-color: #000; }
-
-      /* 문장 시험 4종: A4 한 페이지에 15문항이 고르게 차도록 통일 */
-      .q-container.sentence-grid .q-card {
-        margin-bottom: 4px;
-        padding-bottom: 0;
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-      .q-container.sentence-grid .q-text { font-size: 12px; line-height: 1.3; margin-bottom: 2px; }
-      .q-container.sentence-grid .ans-space { height: 18px; margin-top: 2px; border-bottom-color: #000; }
-      .q-container.sentence-grid .word-box { font-size: 10.5px; line-height: 1.2; padding: 3px 6px; margin-bottom: 2px; }
-
-      /* 1. 해석 / 2. 영작: 답안 공간은 유지하면서 15문항 기준으로 높이 균형 */
-      .paper[data-qtype="1"] .q-container.sentence-grid .q-card,
-      .paper[data-qtype="2"] .q-container.sentence-grid .q-card {
-        min-height: 55px;
-        margin-bottom: 4px;
-      }
-      .paper[data-qtype="1"] .q-container.sentence-grid .q-text,
-      .paper[data-qtype="2"] .q-container.sentence-grid .q-text {
-        font-size: 12px;
-        line-height: 1.3;
-        margin-bottom: 2px;
-      }
-      .paper[data-qtype="1"] .q-container.sentence-grid .ans-space,
-      .paper[data-qtype="2"] .q-container.sentence-grid .ans-space {
-        height: 30px;
-        margin-top: 2px;
-      }
-
-      /* 3. 단어 배열: 뜻 + 배열 박스 + 답안선까지 한 문항 높이를 일정하게 */
-      .paper[data-qtype="3"] .q-container.sentence-grid .q-card {
-        min-height: 57px;
-        margin-bottom: 4px;
-      }
-      .paper[data-qtype="3"] .q-container.sentence-grid .q-text {
-        line-height: 1.28;
-        margin-bottom: 2px !important;
-      }
-      .paper[data-qtype="3"] .q-container.sentence-grid .word-box {
-        margin-bottom: 1px;
-      }
-      .paper[data-qtype="3"] .q-container.sentence-grid .ans-space {
-        height: 18px;
-        margin-top: 1px;
-      }
-
-      /* 4. 빈칸 채우기: 짧은 문장도 페이지 아래까지 고르게 배치 */
-      .paper[data-qtype="4"] .q-container.sentence-grid .q-card {
-        min-height: 58px;
-        margin-bottom: 4px;
-      }
-      .paper[data-qtype="4"] .q-container.sentence-grid .q-text {
-        font-size: 13.5px;
-        line-height: 1.35;
-        margin-bottom: 3px;
-      }
-      .paper[data-qtype="4"] .q-container.sentence-grid .q-card > div:last-child {
-        font-size: 12.5px !important;
-        line-height: 1.35;
-        margin-top: 0 !important;
-      }
-
-      .q-container.sentence-grid .q-card:nth-child(15n + 1):not(:first-child) { break-before: page; page-break-before: always; }
-
-      /* 인쇄 시 단어 시험 2열 50개 맞춤 규격 */
-      .q-container.vocab-grid { column-gap: 20px; row-gap: 1px; }
-      .vocab-grid .q-card { margin-bottom: 4px; }
-      .vocab-grid .q-text { font-size: 11.5px; }
-      .vocab-grid .ans-space { height: 12px; border-bottom-color: #000; }
-    }
-
-    .teacher-login-overlay{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#eef3fb,#f8fafc);display:flex;align-items:center;justify-content:center;padding:24px}
-    .teacher-login-overlay.hidden{display:none}
-    .teacher-login-card{width:min(410px,100%);background:#fff;border:1px solid #dbe4f0;border-radius:20px;padding:30px;box-shadow:0 24px 70px rgba(30,41,59,.16)}
-    .teacher-login-logo{width:48px;height:48px;border-radius:13px;background:#1e3a5f;color:#fff;display:grid;place-items:center;font-weight:900;margin-bottom:18px}
-    .teacher-login-card h2{margin:0;color:#1e293b;font-size:24px}
-    .teacher-login-card p{margin:7px 0 22px;color:#64748b;font-size:13px;line-height:1.6}
-    .teacher-login-card label{font-size:13px;color:#475569}
-    .teacher-login-card input{font-size:22px;letter-spacing:.28em;text-align:center;padding:13px 12px;margin-top:6px}
-    .teacher-login-card button{width:100%;margin-top:12px;padding:13px;border:0;border-radius:9px;background:#2563eb;color:#fff;font-weight:800;font-size:15px;cursor:pointer}
-    .teacher-login-status{min-height:20px;margin-top:9px;font-size:12px;font-weight:700;color:#64748b;text-align:center}
-    #genTab .auth-box{display:none!important}
-    #dbTabBtn{display:none}
-
-    .teacher-login-card .portal-admin-link{background:transparent!important;color:#64748b!important;border:0!important;box-shadow:none!important;font-size:12px!important;font-weight:700!important;padding:7px!important;margin-top:5px!important;text-decoration:underline;text-underline-offset:3px}
-    .teacher-login-card .portal-admin-link:hover{color:#1e3a5f!important}
-
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #f4f6f9; }
+    #appFrame { width: 100%; height: 100%; border: 0; display: block; background: #f4f6f9; }
   </style>
-
-  <!-- 파이어베이스 SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
-
-  <div id="teacherLoginOverlay" class="teacher-login-overlay">
-    <div class="teacher-login-card">
-      <div class="teacher-login-logo">YMS</div>
-      <h2>선생님 로그인</h2>
-      <p>등록된 핸드폰 번호의 뒷자리 4자리를 입력해 주세요.<br>인증 후 내신 시험지 제작 화면으로 이동합니다.</p>
-      <label for="portalPhonePin">핸드폰 번호 뒷자리 4자리</label>
-      <input type="password" id="portalPhonePin" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off">
-      <button type="button" onclick="verifyPortalPin()">로그인</button>
-      <div id="portalLoginStatus" class="teacher-login-status"></div>
-      <a href="?admin=1" id="portalAdminDirect" style="display:block;width:100%;margin-top:10px;padding:11px 12px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#475569;text-align:center;text-decoration:none;font-size:13px;font-weight:800;">운영자 로그인</a>
-    </div>
-  </div>
-
-
-  <h1>📚 YMS Middle School Test Program</h1>
-
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('genTab')">📝 문제지 생성하기 (인증 사용자)</button>
-    <button class="tab-btn" id="dbTabBtn" onclick="switchTab('dbTab')">⚙️ 지문/단어 DB 관리 (운영자 전용)</button>
-  </div>
-
-  <!-- 1. 문제지 생성 탭 -->
-  <div id="genTab" class="panel active">
-    <div class="auth-box">
-      <label>📱 사용자 인증 (핸드폰 번호 뒷자리 4자리 입력)</label>
-      <div style="display:flex; gap:10px;">
-        <input type="password" id="userPhonePin" placeholder="예: 1234" maxlength="4" style="width:150px;">
-        <button style="padding:10px 15px; background:#eab308; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="verifyUserPin()">인증 확인</button>
-      </div>
-      <span id="authStatusText" style="font-size:13px; margin-top:5px; display:block; color:#ca8a04;">* 등록된 번호 입력 시 문제 생성이 가능합니다.</span>
-    </div>
-
-    <div id="genFormSection" style="opacity: 0.5; pointer-events: none;">
-      <div class="row form-group">
-        <div class="col">
-          <label>시험 종류 선택</label>
-          <select id="genCategory" onchange="updateLessonDropdown()">
-            <option value="sentence">📖 문장/지문 시험</option>
-            <option value="vocab">🔤 단어 시험</option>
-          </select>
-        </div>
-        <div class="col">
-          <label>교과서/시험지 선택</label>
-          <select id="genTb" onchange="updateLessonDropdown()"></select>
-        </div>
-        <div class="col">
-          <label>과/단원 선택</label>
-          <select id="genLesson" onchange="updateRangeDropdowns()"></select>
-        </div>
-      </div>
-
-      <!-- 문장 시험용 범위 옵션 -->
-      <div id="sentenceOptions">
-        <div class="row form-group">
-          <div class="col">
-            <label>시작 문장 선택</label>
-            <select id="genStart"></select>
-          </div>
-          <div class="col">
-            <label>끝 문장 선택</label>
-            <select id="genEnd"></select>
-          </div>
-        </div>
-      </div>
-
-      <!-- 단어 시험용 범위 옵션 -->
-      <div id="vocabOptions" style="display:none;">
-        <div class="row form-group">
-          <div class="col">
-            <label>단어 번호대 선택</label>
-            <select id="genWordRangePreset" onchange="applyWordRangePreset()">
-              <option value="all">전체</option>
-              <option value="1-50">1번 ~ 50번</option>
-              <option value="51-100">51번 ~ 100번</option>
-              <option value="101-150">101번 ~ 150번</option>
-              <option value="151-200">151번 ~ 200번</option>
-              <option value="201-250">201번 ~ 250번</option>
-              <option value="251-300">251번 ~ 300번</option>
-              <option value="custom">직접 입력</option>
-            </select>
-          </div>
-
-          <div class="col">
-            <label>시작 번호</label>
-            <input type="number" id="genWordStart" value="1" min="1" step="1" oninput="updateWordCountInfo()">
-          </div>
-
-          <div class="col">
-            <label>끝 번호</label>
-            <input type="number" id="genWordEnd" value="50" min="1" step="1" oninput="updateWordCountInfo()">
-          </div>
-
-          <div class="col">
-            <label>출제 단어 수</label>
-            <input type="number" id="genWordCount" value="50" min="1" step="1">
-            <div id="wordCountInfo" style="font-size:12px; color:#64748b; margin-top:4px;">
-              선택 범위 안에서 랜덤 출제
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="row form-group">
-        <div class="col">
-          <label>문제 유형</label>
-          <select id="genType" onchange="toggleBlankOption()"></select>
-        </div>
-        <div class="col" id="blankOptionCol" style="display: none;">
-          <label>빈칸 개수 (비율)</label>
-          <select id="blankRatio">
-            <option value="0.2">조금 (약 20% 단어)</option>
-            <option value="0.4" selected>보통 (약 40% 단어)</option>
-            <option value="0.6">많이 (약 60% 단어)</option>
-            <option value="0.8">매우 많이 (약 80% 단어)</option>
-          </select>
-        </div>
-      </div>
-      <div style="display:flex; gap:10px;">
-        <button class="btn-submit" onclick="fetchAndGenerate()" style="flex:1;">문제지 만들기</button>
-        <button type="button" onclick="loadDropdownsFromDB()" style="width:180px; background:#475569; color:white; font-weight:bold; border:none; border-radius:6px; cursor:pointer;">🔄 DB 목록 새로고침</button>
-      </div>
-    </div>
-
-    <div class="paper" id="paperArea" style="display:none;"></div>
-  </div>
-
-  <!-- 2. 지문 DB 관리 탭 -->
-  <div id="dbTab" class="panel">
-    <div id="loginSection">
-      <h3>🔒 관리자 로그인</h3>
-      <div class="form-group">
-        <label>관리자 이메일</label>
-        <input type="email" id="loginEmail" value="ddkimhere1984@gmail.com">
-      </div>
-      <div class="form-group">
-        <label>비밀번호</label>
-        <input type="password" id="loginPw" placeholder="관리자 비밀번호 입력">
-      </div>
-      <button class="btn-submit" id="adminLoginBtn" type="button" onclick="handleLogin()">로그인</button>
-      <div id="adminLoginStatus" style="min-height:22px;margin-top:10px;font-size:13px;font-weight:700;color:#64748b;"></div>
-    </div>
-
-    <div id="adminSection" style="display:none;">
-      <div class="admin-bar">
-        <span>👤 관리자(<b id="userEmailText"></b>) 로그인됨</span>
-        <button style="padding:6px 12px; background:#ef4444; color:white; border:none; border-radius:4px; cursor:pointer;" onclick="handleLogout()">로그아웃</button>
-      </div>
-
-      <div style="background:#f8fafc; padding:15px; border:1px solid #e2e8f0; border-radius:6px; margin-bottom:20px;">
-        <h4 style="margin-top:0;">📱 허용 사용자 핸드폰 뒷자리 등록</h4>
-        <div style="display:flex; gap:10px;">
-          <input type="text" id="newAllowedPin" placeholder="뒷자리 4자리 (예: 1234)" maxlength="4" style="width:200px;">
-          <button style="padding:10px; background:#0284c7; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="addAllowedPin()">등록하기</button>
-        </div>
-      </div>
-
-      <hr style="margin:20px 0; border:none; border-top:1px solid #cbd5e1;">
-
-      <!-- 지문 일괄 추가 -->
-      <h3>➕ 1. 문장/지문 DB 일괄 추가</h3>
-      <div class="row form-group">
-        <div class="col"><label>교과서 코드</label><input type="text" id="dbTb" value="동아_윤_2"></div>
-        <div class="col"><label>과 번호</label><input type="number" id="dbLesson" value="1"></div>
-        <div class="col"><label>시작 문장 번호</label><input type="number" id="dbStartNum" value="1"></div>
-      </div>
-      <div class="form-group">
-        <label>영어 문장 목록 (한 줄에 한 문장씩)</label>
-        <textarea id="dbEng" placeholder="1. Somin is a 15-year-old middle school student in Korea."></textarea>
-      </div>
-      <div class="form-group">
-        <label>한글 해석 목록 (한 줄에 한 문장씩)</label>
-        <textarea id="dbKor" placeholder="1. 소민이는 한국에 사는 15세 중학생입니다."></textarea>
-      </div>
-      <button class="btn-submit" style="background:#059669; margin-bottom:30px;" onclick="saveBatchToFirebase()">[문장 지문 DB 저장]</button>
-
-      <!-- 단어 일괄 추가 -->
-      <h3>➕ 2. 단어 DB 일괄 추가</h3>
-      <div class="info-tip">
-        💡 <b>엑셀 입력:</b> 영어와 뜻을 각각 두 열에 두고 여러 줄을 한 번에 복사해서 붙여넣으세요.<br>
-        예: <code>apple&nbsp;&nbsp;&nbsp;&nbsp;사과</code> / <code>take photos&nbsp;&nbsp;&nbsp;&nbsp;사진을 찍다</code><br>
-        엑셀의 TAB 구분을 우선 인식하고, 일반 텍스트는 한글 뜻이 시작되는 위치를 자동 인식합니다.<br>
-        <b>인식하지 못한 줄이 있으면 저장하지 않고 어떤 줄인지 알려줍니다.</b><br>
-        <b>같은 교과서/과에 다시 저장하면 기존 단어는 제거되고, 방금 저장한 단어로 교체됩니다.</b>
-      </div>
-      <div class="row form-group">
-        <div class="col"><label>교과서 코드</label><input type="text" id="dbWordTb" value="동아_윤_2"></div>
-        <div class="col"><label>과 번호</label><input type="number" id="dbWordLesson" value="1"></div>
-        <div class="col"><label>시작 단어 번호</label><input type="number" id="dbWordStartNum" value="1" min="1"></div>
-      </div>
-      <div class="form-group">
-        <label>단어 및 뜻 목록 (엑셀 2열 그대로 붙여넣기)</label>
-        <textarea id="dbWords" oninput="previewWordImport()" placeholder="apple	사과&#10;banana	바나나&#10;take photos	사진을 찍다"></textarea>
-        <div id="wordImportPreview" style="margin-top:8px; font-size:13px; font-weight:bold; color:#475569;">
-          붙여넣으면 인식된 단어 수가 표시됩니다.
-        </div>
-      </div>
-      <button id="saveWordsBtn" class="btn-submit" style="background:#0284c7;" onclick="saveWordsToFirebase()">[단어 DB 저장 - 기존 데이터 교체]</button>
-
-      <hr style="margin:28px 0 20px; border:none; border-top:1px solid #cbd5e1;">
-
-      <!-- DB 조회 / 수정 / 삭제 -->
-      <h3>🛠️ 3. 데이터베이스 조회 / 수정 / 삭제</h3>
-      <div class="info-tip">
-        💡 교과서와 과를 선택하면 저장된 항목을 직접 수정하거나 삭제할 수 있습니다.<br>
-        <b>과 전체 삭제</b>는 해당 교과서/과의 데이터가 모두 지워지므로 확인창을 한 번 더 거칩니다.
-      </div>
-
-      <div class="row form-group">
-        <div class="col">
-          <label>데이터 종류</label>
-          <select id="dbEditorCategory" onchange="refreshDbEditorFilters(); updateDbExcelButton()">
-            <option value="sentence">문장/지문</option>
-            <option value="vocab">단어</option>
-          </select>
-        </div>
-        <div class="col">
-          <label>교과서</label>
-          <select id="dbEditorTb" onchange="updateDbEditorLessonDropdown()"></select>
-        </div>
-        <div class="col">
-          <label>과</label>
-          <select id="dbEditorLesson"></select>
-        </div>
-      </div>
-
-      <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
-        <button type="button" onclick="loadDbEditor()" style="flex:1; min-width:180px; padding:10px 14px; background:#2563eb; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">🔎 선택 데이터 불러오기</button>
-        <button type="button" onclick="refreshDbEditorFilters()" style="padding:10px 14px; background:#475569; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">🔄 목록 새로고침</button>
-        <button id="dbExcelBtn" type="button" onclick="downloadDbWordsExcel()" style="display:none; padding:10px 14px; background:#107c41; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">⬇️ 단어 엑셀 다운로드</button>
-        <button type="button" onclick="renameDbTextbook()" style="padding:10px 14px; background:#7c3aed; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">✏️ 교과서 이름 변경</button>
-        <button type="button" onclick="deleteDbLesson()" style="padding:10px 14px; background:#dc2626; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">🗑️ 이 과 전체 삭제</button>
-      </div>
-
-      <div id="dbEditorStatus" style="font-size:13px; font-weight:bold; color:#475569; margin:8px 0 12px;">관리자 로그인 후 데이터를 선택해 주세요.</div>
-      <div id="dbEditorList"></div>
-    </div>
-  </div>
-
+  <iframe id="appFrame" title="YMS Middle School Test Program"></iframe>
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBQU7tXEVtN-W-KbMWlXyevqPnaQoUND40",
-      authDomain: "school-test-b8d9c.firebaseapp.com",
-      projectId: "school-test-b8d9c",
-      storageBucket: "school-test-b8d9c.firebasestorage.app",
-      messagingSenderId: "908472962565",
-      appId: "1:908472962565:web:365396e9008d1258f3d66c",
-      measurementId: "G-DZGC4P918C"
-    };
+    const frame = document.getElementById('appFrame');
+    frame.src = 'legacy.html' + window.location.search + window.location.hash;
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
+    frame.addEventListener('load', () => {
+      const win = frame.contentWindow;
+      const doc = frame.contentDocument;
+      if (!win || !doc || win.__ymsGrammarErrorInstalled) return;
+      win.__ymsGrammarErrorInstalled = true;
 
-    let isPinVerified = false;
-    let dbSentenceMap = {};
-    let dbWordMap = {};
-    let dbEditorIndex = {};
-
-    const ADMIN_MODE = new URLSearchParams(location.search).get('admin') === '1';
-    if (ADMIN_MODE) {
-      document.getElementById('teacherLoginOverlay').classList.add('hidden');
-      document.getElementById('dbTabBtn').style.display = 'inline-block';
-      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById('dbTab').classList.add('active');
-      document.getElementById('dbTabBtn').classList.add('active');
-    } else if (sessionStorage.getItem('ymsSchoolTestTeacherAuth') === '1') {
-      document.getElementById('teacherLoginOverlay').classList.add('hidden');
-      isPinVerified = true;
-      document.getElementById('genFormSection').style.opacity = '1';
-      document.getElementById('genFormSection').style.pointerEvents = 'auto';
-      setTimeout(()=>loadDropdownsFromDB(),0);
-    }
-    const adminPw = document.getElementById('loginPw');
-    if (adminPw) adminPw.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
-    const portalPin = document.getElementById('portalPhonePin');
-    if (portalPin) portalPin.addEventListener('keydown', e => { if (e.key === 'Enter') verifyPortalPin(); });
-
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        document.getElementById('loginSection').style.display = 'none';
-        document.getElementById('adminSection').style.display = 'block';
-        document.getElementById('userEmailText').innerText = user.email;
-        refreshDbEditorFilters().catch(err => {
-          const status = document.getElementById('dbEditorStatus');
-          if (status) status.innerText = "DB 관리 목록 로드 실패: " + err.message;
-        });
-      } else {
-        document.getElementById('loginSection').style.display = 'block';
-        document.getElementById('adminSection').style.display = 'none';
-        dbEditorIndex = {};
-        const editorList = document.getElementById('dbEditorList');
-        if (editorList) editorList.innerHTML = "";
-      }
-    });
-
-    function switchTab(tabId) {
-      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById(tabId).classList.add('active');
-      event.target.classList.add('active');
-    }
-
-    function toggleBlankOption() {
-      const category = document.getElementById('genCategory').value;
-      const qType = document.getElementById('genType').value;
-      const blankCol = document.getElementById('blankOptionCol');
-      blankCol.style.display = (category === "sentence" && qType === "4") ? "block" : "none";
-    }
-
-    function openAdminPortal() {
-      document.getElementById('teacherLoginOverlay').classList.add('hidden');
-      document.getElementById('dbTabBtn').style.display = 'inline-block';
-      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById('dbTab').classList.add('active');
-      document.getElementById('dbTabBtn').classList.add('active');
-      document.getElementById('loginSection').style.display = 'block';
-      document.getElementById('adminSection').style.display = 'none';
-      setTimeout(() => document.getElementById('loginEmail')?.focus(), 0);
-    }
-
-    function verifyPortalPin() {
-      const pin = document.getElementById('portalPhonePin').value.trim();
-      const status = document.getElementById('portalLoginStatus');
-      if (!/^\d{4}$/.test(pin)) {
-        status.innerText = "핸드폰 번호 뒷자리 4자리를 입력해 주세요.";
-        status.style.color = "#dc2626";
-        return;
-      }
-      status.innerText = "인증 확인 중...";
-      status.style.color = "#64748b";
-      db.collection("allowed_users").doc(pin).get().then(doc => {
-        if (doc.exists) {
-          isPinVerified = true;
-          sessionStorage.setItem('ymsSchoolTestTeacherAuth','1');
-          document.getElementById('teacherLoginOverlay').classList.add('hidden');
-          document.getElementById('genFormSection').style.opacity = "1";
-          document.getElementById('genFormSection').style.pointerEvents = "auto";
-          loadDropdownsFromDB();
-        } else {
-          status.innerText = "등록되지 않은 번호입니다.";
-          status.style.color = "#dc2626";
+      const style = doc.createElement('style');
+      style.textContent = `
+        .grammar-passage { font-size: 14px; line-height: 2.1; text-align: justify; word-break: keep-all; }
+        .grammar-sentence { display: inline; margin-right: 5px; }
+        .grammar-sentence-num { font-weight: 800; margin-right: 3px; }
+        @media print {
+          .paper[data-qtype="5"] .grammar-passage { font-size: 13.5px; line-height: 2.15; text-align: justify; }
         }
-      }).catch(err => {
-        status.innerText = "인증 오류: " + err.message;
-        status.style.color = "#dc2626";
-      });
-    }
+      `;
+      doc.head.appendChild(style);
 
-    function verifyUserPin() {
-      const pin = document.getElementById('userPhonePin').value.trim();
-      if (pin.length !== 4) return alert("핸드폰 번호 뒷자리 4자리를 입력해 주세요.");
-
-      db.collection("allowed_users").doc(pin).get().then(doc => {
-        if (doc.exists) {
-          isPinVerified = true;
-          document.getElementById('authStatusText').innerText = "⏳ 인증 성공! DB 목록을 불러오는 중입니다...";
-          document.getElementById('authStatusText').style.color = "#16a34a";
-          document.getElementById('genFormSection').style.opacity = "1";
-          document.getElementById('genFormSection').style.pointerEvents = "auto";
-          
-          loadDropdownsFromDB();
-        } else {
-          isPinVerified = false;
-          document.getElementById('authStatusText').innerText = "❌ 등록되지 않은 사용자 번호입니다.";
-          document.getElementById('authStatusText').style.color = "#dc2626";
-          document.getElementById('genFormSection').style.opacity = "0.5";
-          document.getElementById('genFormSection').style.pointerEvents = "none";
-        }
-      }).catch(err => alert("인증 오류: " + err.message));
-    }
-
-    async function loadDropdownsFromDB() {
-      try {
-        const sentenceSnapshot = await db.collection("sentences").get();
-        dbSentenceMap = {};
-        sentenceSnapshot.forEach(doc => {
-          const data = doc.data();
-          const { tbCode: tb, lesson, num, eng = "" } = data;
-          if (!dbSentenceMap[tb]) dbSentenceMap[tb] = {};
-          if (!dbSentenceMap[tb][lesson]) dbSentenceMap[tb][lesson] = [];
-          if (!dbSentenceMap[tb][lesson].some(s => s.num === num)) {
-            dbSentenceMap[tb][lesson].push({ num, eng });
-          }
-        });
-
-        const wordSnapshot = await db.collection("words").get();
-        dbWordMap = {};
-
-        // 같은 교과서/과에 여러 번 저장된 경우,
-        // 가장 마지막에 저장한 "한 묶음(importId)"만 시험에 사용한다.
-        const groupedWords = {};
-
-        wordSnapshot.forEach(doc => {
-          const data = doc.data();
-          const {
-            tbCode: tb,
-            lesson,
-            word,
-            meaning,
-            num = null,
-            createdAt = null,
-            importId = null,
-            importSavedAt = null
-          } = data;
-
-          if (!tb || lesson === undefined || lesson === null) return;
-
-          const key = `${tb}|||${lesson}`;
-          if (!groupedWords[key]) groupedWords[key] = [];
-
-          groupedWords[key].push({
-            word,
-            meaning,
-            num,
-            createdAt,
-            importId,
-            importSavedAt
-          });
-        });
-
-        Object.keys(groupedWords).forEach(key => {
-          const [tb, lessonStr] = key.split("|||");
-          const lesson = Number(lessonStr);
-          const allItems = groupedWords[key];
-
-          // importId가 있는 최신 저장 데이터가 하나라도 있으면,
-          // 예전 데이터(importId 없음)는 완전히 무시한다.
-          const importedItems = allItems.filter(item => item.importId);
-
-          let latestItems;
-
-          if (importedItems.length > 0) {
-            const importTimeMap = {};
-
-            importedItems.forEach(item => {
-              let t = 0;
-
-              if (item.importSavedAt) {
-                if (typeof item.importSavedAt.toMillis === "function") {
-                  t = item.importSavedAt.toMillis();
-                } else if (typeof item.importSavedAt.seconds === "number") {
-                  t = item.importSavedAt.seconds * 1000;
-                }
-              }
-
-              // serverTimestamp가 아직 반영되지 않은 순간을 대비해
-              // importId에 포함된 시간값도 보조 기준으로 사용
-              if (!t && typeof item.importId === "string") {
-                const match = item.importId.match(/^(\d+)_/);
-                if (match) t = Number(match[1]);
-              }
-
-              if (!importTimeMap[item.importId] || t > importTimeMap[item.importId]) {
-                importTimeMap[item.importId] = t;
-              }
-            });
-
-            const latestImportId = Object.keys(importTimeMap)
-              .sort((a, b) => importTimeMap[b] - importTimeMap[a])[0];
-
-            latestItems = importedItems.filter(item => item.importId === latestImportId);
-          } else {
-            // 아직 한 번도 새 방식으로 저장하지 않은 기존 DB는
-            // 기존 데이터 그대로 보여준다. 새로 한 번 저장하면 이후부터는 최신 묶음만 사용한다.
-            latestItems = allItems;
-          }
-
-          if (!dbWordMap[tb]) dbWordMap[tb] = {};
-          dbWordMap[tb][lesson] = latestItems;
-        });
-
-        document.getElementById('authStatusText').innerText = "✅ 인증 성공! 목록에서 지문을 선택해 문제지를 생성하세요.";
-        updateLessonDropdown();
-      } catch (err) {
-        alert("DB 목록 로드 실패: " + err.message);
-      }
-    }
-
-    function updateLessonDropdown() {
-      const category = document.getElementById('genCategory').value;
-      const targetMap = (category === "sentence") ? dbSentenceMap : dbWordMap;
-      const genTbSelect = document.getElementById('genTb');
-      const genLessonSelect = document.getElementById('genLesson');
-      const genTypeSelect = document.getElementById('genType');
-      const previousTb = genTbSelect.value;
-      const previousLesson = genLessonSelect.value;
-      
-      genTbSelect.innerHTML = "";
-
-      if (category === "sentence") {
-        document.getElementById('sentenceOptions').style.display = "block";
-        document.getElementById('vocabOptions').style.display = "none";
-        genTypeSelect.innerHTML = `
-          <option value="1">1. 해석하기 (Eng → Kor)</option>
-          <option value="2">2. 영어쓰기 (Kor → Eng)</option>
-          <option value="3">3. 단어 배열하기</option>
-          <option value="4">4. 빈칸 채우기</option>
+      const blankCol = doc.getElementById('blankOptionCol');
+      if (blankCol && !doc.getElementById('grammarErrorOptionCol')) {
+        const grammarCol = doc.createElement('div');
+        grammarCol.className = 'col';
+        grammarCol.id = 'grammarErrorOptionCol';
+        grammarCol.style.display = 'none';
+        grammarCol.innerHTML = `
+          <label>문법 오류 개수</label>
+          <input type="number" id="grammarErrorCount" value="5" min="1" max="20" step="1">
         `;
-      } else {
-        document.getElementById('sentenceOptions').style.display = "none";
-        document.getElementById('vocabOptions').style.display = "block";
-        genTypeSelect.innerHTML = `
-          <option value="w1">1. 뜻만 보기 (Eng → Kor)</option>
-          <option value="w2">2. 영어만 보기 (Kor → Eng)</option>
-          <option value="w3">3. 섞어서 보기 (랜덤)</option>
-        `;
-      }
-      toggleBlankOption();
-
-      const tbKeys = Object.keys(targetMap).sort((a, b) =>
-        String(a).localeCompare(String(b), "ko-KR", { numeric: true, sensitivity: "base" })
-      );
-      if (tbKeys.length === 0) {
-        genTbSelect.innerHTML = "<option value=''>등록된 데이터가 없습니다</option>";
-        return;
+        blankCol.parentElement.appendChild(grammarCol);
       }
 
-      tbKeys.forEach(tb => {
-        const opt = document.createElement('option');
-        opt.value = tb;
-        opt.innerText = tb;
-        genTbSelect.appendChild(opt);
-      });
-
-      if (previousTb && targetMap[previousTb]) {
-        genTbSelect.value = previousTb;
-      }
-
-      const selectedTb = genTbSelect.value;
-      genLessonSelect.innerHTML = "";
-
-      if (selectedTb && targetMap[selectedTb]) {
-        const lessons = Object.keys(targetMap[selectedTb]).map(Number).sort((a, b) => a - b);
-        lessons.forEach(l => {
-          const opt = document.createElement('option');
-          opt.value = l;
-          const count = Array.isArray(targetMap[selectedTb][l]) ? targetMap[selectedTb][l].length : 0;
-          opt.innerText = `${l}과 (${count}개)`;
-          genLessonSelect.appendChild(opt);
-        });
-
-        if (previousLesson && targetMap[selectedTb][previousLesson]) {
-          genLessonSelect.value = previousLesson;
+      function installGrammarOption() {
+        const category = doc.getElementById('genCategory');
+        const type = doc.getElementById('genType');
+        if (!category || !type || category.value !== 'sentence') return;
+        if (!type.querySelector('option[value="5"]')) {
+          const option = doc.createElement('option');
+          option.value = '5';
+          option.textContent = '5. 문법 오류 찾기';
+          type.appendChild(option);
         }
       }
 
-      updateRangeDropdowns();
-    }
-
-    function updateRangeDropdowns() {
-      const category = document.getElementById('genCategory').value;
-      if (category === "sentence") {
-        updateSentenceDropdowns();
-      } else {
-        updateWordDropdowns();
-      }
-    }
-
-    function updateSentenceDropdowns() {
-      const category = document.getElementById('genCategory').value;
-      if (category !== "sentence") return;
-
-      const selectedTb = document.getElementById('genTb').value;
-      const selectedLesson = document.getElementById('genLesson').value;
-      const genStartSelect = document.getElementById('genStart');
-      const genEndSelect = document.getElementById('genEnd');
-
-      genStartSelect.innerHTML = "";
-      genEndSelect.innerHTML = "";
-
-      if (!selectedTb || !selectedLesson || !dbSentenceMap[selectedTb] || !dbSentenceMap[selectedTb][selectedLesson]) return;
-
-      const sentences = dbSentenceMap[selectedTb][selectedLesson];
-      sentences.sort((a, b) => a.num - b.num);
-
-      const addedNums = new Set();
-      sentences.forEach(item => {
-        if (!addedNums.has(item.num)) {
-          addedNums.add(item.num);
-          const preview = item.eng.length > 25 ? item.eng.substring(0, 25) + "..." : item.eng;
-          const label = `${item.num}번: ${preview}`;
-
-          const optStart = document.createElement('option');
-          optStart.value = item.num;
-          optStart.innerText = label;
-          genStartSelect.appendChild(optStart);
-
-          const optEnd = document.createElement('option');
-          optEnd.value = item.num;
-          optEnd.innerText = label;
-          genEndSelect.appendChild(optEnd);
-        }
-      });
-
-      if (sentences.length > 0) {
-        genEndSelect.value = sentences[sentences.length - 1].num;
-      }
-    }
-
-    function getWordTimestamp(item) {
-      if (!item.createdAt) return 0;
-      if (typeof item.createdAt.toMillis === "function") return item.createdAt.toMillis();
-      if (typeof item.createdAt.seconds === "number") return item.createdAt.seconds * 1000;
-      return 0;
-    }
-
-    function getLatestImportedWordItems(allItems) {
-      if (!Array.isArray(allItems) || allItems.length === 0) return [];
-
-      const importedItems = allItems.filter(item => item.importId);
-      if (importedItems.length === 0) return allItems;
-
-      const importTimeMap = {};
-      importedItems.forEach(item => {
-        let t = 0;
-        if (item.importSavedAt) {
-          if (typeof item.importSavedAt.toMillis === "function") {
-            t = item.importSavedAt.toMillis();
-          } else if (typeof item.importSavedAt.seconds === "number") {
-            t = item.importSavedAt.seconds * 1000;
-          }
-        }
-        if (!t && typeof item.importId === "string") {
-          const match = item.importId.match(/^(\d+)_/);
-          if (match) t = Number(match[1]);
-        }
-        if (!importTimeMap[item.importId] || t > importTimeMap[item.importId]) {
-          importTimeMap[item.importId] = t;
-        }
-      });
-
-      const latestImportId = Object.keys(importTimeMap)
-        .sort((a, b) => importTimeMap[b] - importTimeMap[a])[0];
-
-      return importedItems.filter(item => item.importId === latestImportId);
-    }
-
-    async function fetchLatestWordsFromDB(tb, lesson) {
-      const snapshot = await db.collection("words").where("tbCode", "==", tb).get();
-      const items = [];
-
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        if (Number(data.lesson) !== Number(lesson)) return;
-        items.push({
-          word: data.word,
-          meaning: data.meaning,
-          num: data.num ?? null,
-          createdAt: data.createdAt ?? null,
-          importId: data.importId ?? null,
-          importSavedAt: data.importSavedAt ?? null
-        });
-      });
-
-      return getLatestImportedWordItems(items);
-    }
-
-    function getSortedWords(tb, lesson) {
-      if (!dbWordMap[tb] || !dbWordMap[tb][lesson]) return [];
-
-      const words = [...dbWordMap[tb][lesson]];
-      words.sort((a, b) => {
-        const aHasNum = a.num !== null && a.num !== undefined && a.num !== "" && Number.isFinite(Number(a.num)) && Number(a.num) >= 1;
-        const bHasNum = b.num !== null && b.num !== undefined && b.num !== "" && Number.isFinite(Number(b.num)) && Number(b.num) >= 1;
-
-        if (aHasNum && bHasNum) return Number(a.num) - Number(b.num);
-        if (aHasNum) return -1;
-        if (bHasNum) return 1;
-
-        return getWordTimestamp(a) - getWordTimestamp(b);
-      });
-
-      // 예전에 저장한 단어(num 없음)도 선택 가능하도록 화면용 번호 부여
-      let nextAutoNum = 1;
-      const usedNums = new Set(
-        words
-          .filter(item =>
-            item.num !== null &&
-            item.num !== undefined &&
-            item.num !== "" &&
-            Number.isFinite(Number(item.num)) &&
-            Number(item.num) >= 1
-          )
-          .map(item => Number(item.num))
-      );
-
-      return words.map(item => {
-        let displayNum;
-        if (
-          item.num !== null &&
-          item.num !== undefined &&
-          item.num !== "" &&
-          Number.isFinite(Number(item.num)) &&
-          Number(item.num) >= 1
-        ) {
-          displayNum = Number(item.num);
-        } else {
-          while (usedNums.has(nextAutoNum)) nextAutoNum++;
-          displayNum = nextAutoNum;
-          usedNums.add(displayNum);
-          nextAutoNum++;
-        }
-        return { ...item, displayNum };
-      }).sort((a, b) => a.displayNum - b.displayNum);
-    }
-
-    function updateWordDropdowns() {
-      const selectedTb = document.getElementById('genTb').value;
-      const selectedLesson = document.getElementById('genLesson').value;
-      const startEl = document.getElementById('genWordStart');
-      const endEl = document.getElementById('genWordEnd');
-      const presetEl = document.getElementById('genWordRangePreset');
-
-      if (!selectedTb || !selectedLesson) return;
-
-      const words = getSortedWords(selectedTb, selectedLesson);
-
-      if (words.length === 0) {
-        startEl.value = 1;
-        endEl.value = 1;
-        presetEl.value = "all";
-        updateWordCountInfo();
-        return;
-      }
-
-      const minNum = Math.min(...words.map(item => item.displayNum));
-      const maxNum = Math.max(...words.map(item => item.displayNum));
-
-      startEl.min = minNum;
-      endEl.max = maxNum;
-
-      // 과를 바꾸면 기본은 전체 범위
-      startEl.value = minNum;
-      endEl.value = maxNum;
-      presetEl.value = "all";
-
-      updateWordCountInfo();
-    }
-
-    function applyWordRangePreset() {
-      const preset = document.getElementById('genWordRangePreset').value;
-      const selectedTb = document.getElementById('genTb').value;
-      const selectedLesson = document.getElementById('genLesson').value;
-      const startEl = document.getElementById('genWordStart');
-      const endEl = document.getElementById('genWordEnd');
-
-      const words = getSortedWords(selectedTb, selectedLesson);
-      if (words.length === 0) return;
-
-      const minNum = Math.min(...words.map(item => item.displayNum));
-      const maxNum = Math.max(...words.map(item => item.displayNum));
-
-      if (preset === "all") {
-        startEl.value = minNum;
-        endEl.value = maxNum;
-      } else if (preset !== "custom") {
-        const [presetStart, presetEnd] = preset.split("-").map(Number);
-        startEl.value = Math.max(minNum, presetStart);
-        endEl.value = Math.min(maxNum, presetEnd);
-      }
-
-      updateWordCountInfo();
-    }
-
-    function updateWordCountInfo() {
-      const startEl = document.getElementById('genWordStart');
-      const endEl = document.getElementById('genWordEnd');
-      const countEl = document.getElementById('genWordCount');
-      const infoEl = document.getElementById('wordCountInfo');
-      const presetEl = document.getElementById('genWordRangePreset');
-
-      if (!startEl || !endEl || !countEl || !infoEl) return;
-
-      const start = parseInt(startEl.value);
-      const end = parseInt(endEl.value);
-      const selectedTb = document.getElementById('genTb').value;
-      const selectedLesson = document.getElementById('genLesson').value;
-
-      if (isNaN(start) || isNaN(end)) {
-        infoEl.innerText = "시작 번호와 끝 번호를 입력해 주세요.";
-        return;
-      }
-
-      if (start > end) {
-        infoEl.innerText = "⚠️ 시작 번호가 끝 번호보다 큽니다.";
-        return;
-      }
-
-      const words = getSortedWords(selectedTb, selectedLesson);
-      const available = words.filter(
-        item => item.displayNum >= start && item.displayNum <= end
-      ).length;
-
-      infoEl.innerText = `현재 ${start}~${end}번 범위: ${available}개 / 입력한 개수만큼 랜덤 출제`;
-
-      if (available > 0 && parseInt(countEl.value) > available) {
-        countEl.value = available;
-      }
-
-      // 숫자를 직접 바꾸면 preset을 직접 입력으로 표시
-      if (presetEl) {
-        const presetValue = presetEl.value;
-        if (presetValue !== "all" && presetValue !== "custom") {
-          const [ps, pe] = presetValue.split("-").map(Number);
-          if (start !== ps || end !== pe) {
-            presetEl.value = "custom";
-          }
-        }
-      }
-    }
-
-    function addAllowedPin() {
-      const pin = document.getElementById('newAllowedPin').value.trim();
-      if (pin.length !== 4) return alert("4자리 숫자를 입력해 주세요.");
-
-      db.collection("allowed_users").doc(pin).set({
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      }).then(() => {
-        alert(`승인 번호 [${pin}] 번이 성공적으로 추가되었습니다.`);
-        document.getElementById('newAllowedPin').value = "";
-      }).catch(err => alert("추가 실패: " + err.message));
-    }
-
-    function naturalKoreanCompare(a, b) {
-      return String(a ?? "").localeCompare(String(b ?? ""), "ko-KR", {
-        numeric: true,
-        sensitivity: "base"
-      });
-    }
-
-    function getEditorCollectionName() {
-      return document.getElementById('dbEditorCategory').value === "sentence" ? "sentences" : "words";
-    }
-
-    function updateDbExcelButton() {
-      const btn = document.getElementById('dbExcelBtn');
-      if (!btn) return;
-      btn.style.display = document.getElementById('dbEditorCategory').value === "vocab" ? "inline-block" : "none";
-    }
-
-    function escapeXml(value) {
-      return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&apos;");
-    }
-
-    async function downloadDbWordsExcel() {
-      if (!auth.currentUser) return alert("관리자 로그인이 필요합니다.");
-      if (document.getElementById('dbEditorCategory').value !== "vocab") {
-        return alert("데이터 종류에서 [단어]를 선택해 주세요.");
-      }
-
-      const tb = document.getElementById('dbEditorTb').value;
-      const lesson = Number(document.getElementById('dbEditorLesson').value);
-      if (!tb || !Number.isFinite(lesson)) return alert("교과서와 과를 선택해 주세요.");
-
-      let latestWords;
-      try {
-        latestWords = await fetchLatestWordsFromDB(tb, lesson);
-      } catch (err) {
-        return alert("단어 데이터를 불러오지 못했습니다: " + err.message);
-      }
-
-      if (!latestWords || latestWords.length === 0) {
-        return alert(`${tb} ${lesson}과에 저장된 단어가 없습니다.`);
-      }
-
-      if (!dbWordMap[tb]) dbWordMap[tb] = {};
-      dbWordMap[tb][lesson] = latestWords;
-      const words = getSortedWords(tb, lesson);
-
-      const header = ["교과서", "Unit", "번호", "영단어", "뜻"];
-      const rows = words.map(item => [tb, lesson, item.displayNum, item.word, item.meaning]);
-
-      const xmlRow = (cells, headerRow = false) => {
-        const cellXml = cells.map((value, index) => {
-          const isNumber = !headerRow && (index === 1 || index === 2) && Number.isFinite(Number(value));
-          const type = isNumber ? "Number" : "String";
-          const style = headerRow ? ' ss:StyleID="Header"' : '';
-          return `<Cell${style}><Data ss:Type="${type}">${escapeXml(value)}</Data></Cell>`;
-        }).join("");
-        return `<Row>${cellXml}</Row>`;
+      const originalToggle = typeof win.toggleBlankOption === 'function' ? win.toggleBlankOption.bind(win) : null;
+      win.toggleBlankOption = function() {
+        if (originalToggle) originalToggle();
+        const category = doc.getElementById('genCategory')?.value;
+        const qType = doc.getElementById('genType')?.value;
+        const grammarCol = doc.getElementById('grammarErrorOptionCol');
+        if (grammarCol) grammarCol.style.display = (category === 'sentence' && qType === '5') ? 'block' : 'none';
       };
 
-      const workbookXml = `<?xml version="1.0" encoding="UTF-8"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:o="urn:schemas-microsoft-com:office:office"
- xmlns:x="urn:schemas-microsoft-com:office:excel"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:html="http://www.w3.org/TR/REC-html40">
- <Styles>
-  <Style ss:ID="Header">
-   <Font ss:Bold="1"/>
-   <Interior ss:Color="#D9EAD3" ss:Pattern="Solid"/>
-  </Style>
- </Styles>
- <Worksheet ss:Name="Unit ${lesson}">
-  <Table>
-   <Column ss:Width="110"/>
-   <Column ss:Width="55"/>
-   <Column ss:Width="45"/>
-   <Column ss:Width="150"/>
-   <Column ss:Width="220"/>
-   ${xmlRow(header, true)}
-   ${rows.map(row => xmlRow(row)).join("\n   ")}
-  </Table>
- </Worksheet>
-</Workbook>`;
-
-      const blob = new Blob([workbookXml], { type: "application/vnd.ms-excel;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const safeTb = tb.replace(/[\/:*?"<>|]/g, "_");
-      a.href = url;
-      a.download = `${safeTb}_Unit${lesson}_단어목록.xls`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    }
-
-    async function refreshDbEditorFilters(preferredTb = "", preferredLesson = "") {
-      if (!auth.currentUser) return;
-
-      const category = document.getElementById('dbEditorCategory').value;
-      updateDbExcelButton();
-      const collectionName = category === "sentence" ? "sentences" : "words";
-      const tbSelect = document.getElementById('dbEditorTb');
-      const lessonSelect = document.getElementById('dbEditorLesson');
-      const status = document.getElementById('dbEditorStatus');
-
-      const currentTb = preferredTb || tbSelect.value;
-      const currentLesson = String(preferredLesson || lessonSelect.value || "");
-
-      status.innerText = "DB 목록을 불러오는 중입니다...";
-      const snapshot = await db.collection(collectionName).get();
-      const index = {};
-
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const tb = String(data.tbCode || "").trim();
-        const lesson = Number(data.lesson);
-        if (!tb || !Number.isFinite(lesson)) return;
-        if (!index[tb]) index[tb] = {};
-        index[tb][lesson] = (index[tb][lesson] || 0) + 1;
-      });
-
-      dbEditorIndex = index;
-      tbSelect.innerHTML = "";
-
-      const tbKeys = Object.keys(index).sort(naturalKoreanCompare);
-      if (tbKeys.length === 0) {
-        tbSelect.innerHTML = "<option value=''>등록된 데이터가 없습니다</option>";
-        lessonSelect.innerHTML = "";
-        document.getElementById('dbEditorList').innerHTML = "";
-        status.innerText = "등록된 데이터가 없습니다.";
-        return;
+      const originalUpdateLessonDropdown = typeof win.updateLessonDropdown === 'function' ? win.updateLessonDropdown.bind(win) : null;
+      if (originalUpdateLessonDropdown) {
+        win.updateLessonDropdown = function() {
+          const result = originalUpdateLessonDropdown(...arguments);
+          installGrammarOption();
+          win.toggleBlankOption();
+          return result;
+        };
       }
 
-      tbKeys.forEach(tb => {
-        const opt = document.createElement('option');
-        opt.value = tb;
-        opt.innerText = tb;
-        tbSelect.appendChild(opt);
-      });
-
-      if (currentTb && index[currentTb]) tbSelect.value = currentTb;
-      updateDbEditorLessonDropdown(currentLesson);
-      status.innerText = "교과서와 과를 선택한 뒤 [선택 데이터 불러오기]를 눌러 주세요.";
-    }
-
-    function updateDbEditorLessonDropdown(preferredLesson = "") {
-      const tb = document.getElementById('dbEditorTb').value;
-      const lessonSelect = document.getElementById('dbEditorLesson');
-      const currentLesson = String(preferredLesson || lessonSelect.value || "");
-      lessonSelect.innerHTML = "";
-
-      if (!tb || !dbEditorIndex[tb]) return;
-
-      const lessons = Object.keys(dbEditorIndex[tb]).map(Number).sort((a, b) => a - b);
-      lessons.forEach(lesson => {
-        const opt = document.createElement('option');
-        opt.value = lesson;
-        opt.innerText = `${lesson}과 (${dbEditorIndex[tb][lesson]}개)`;
-        lessonSelect.appendChild(opt);
-      });
-
-      if (currentLesson && dbEditorIndex[tb][Number(currentLesson)]) {
-        lessonSelect.value = Number(currentLesson);
+      function coreParts(token) {
+        const m = String(token || '').match(/^([^A-Za-z]*)([A-Za-z]+)([^A-Za-z]*)$/);
+        return m ? { pre: m[1], core: m[2], post: m[3] } : null;
       }
-    }
 
-    function getDocCreatedTime(data) {
-      const value = data.createdAt || data.importSavedAt;
-      if (!value) return 0;
-      if (typeof value.toMillis === "function") return value.toMillis();
-      if (typeof value.seconds === "number") return value.seconds * 1000;
-      return 0;
-    }
-
-    async function getDbEditorDocuments() {
-      const collectionName = getEditorCollectionName();
-      const tb = document.getElementById('dbEditorTb').value;
-      const lesson = Number(document.getElementById('dbEditorLesson').value);
-      if (!tb || !Number.isFinite(lesson)) return [];
-
-      const snapshot = await db.collection(collectionName).where("tbCode", "==", tb).get();
-      const docs = [];
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        if (Number(data.lesson) !== lesson) return;
-        docs.push({ id: doc.id, ref: doc.ref, data });
-      });
-
-      docs.sort((a, b) => {
-        const aNum = Number(a.data.num);
-        const bNum = Number(b.data.num);
-        const aValid = Number.isFinite(aNum);
-        const bValid = Number.isFinite(bNum);
-        if (aValid && bValid && aNum !== bNum) return aNum - bNum;
-        if (aValid && !bValid) return -1;
-        if (!aValid && bValid) return 1;
-        return getDocCreatedTime(a.data) - getDocCreatedTime(b.data);
-      });
-      return docs;
-    }
-
-    function makeEditorInput(field, value, options = {}) {
-      const el = options.multiline ? document.createElement('textarea') : document.createElement('input');
-      el.dataset.field = field;
-      el.value = value ?? "";
-      el.style.width = "100%";
-      el.style.padding = "8px";
-      el.style.border = "1px solid #cbd5e1";
-      el.style.borderRadius = "5px";
-      el.style.fontFamily = "inherit";
-      el.style.fontSize = "13px";
-      if (options.multiline) {
-        el.rows = options.rows || 2;
-        el.style.resize = "vertical";
-      } else if (options.type) {
-        el.type = options.type;
+      function preserveCase(original, replacement) {
+        if (original === original.toUpperCase()) return replacement.toUpperCase();
+        if (original[0] === original[0].toUpperCase()) return replacement[0].toUpperCase() + replacement.slice(1);
+        return replacement;
       }
-      return el;
-    }
 
-    async function loadDbEditor() {
-      if (!auth.currentUser) return alert("관리자 로그인이 필요합니다.");
+      function replaceCore(token, replacement) {
+        const p = coreParts(token);
+        if (!p) return token;
+        return p.pre + preserveCase(p.core, replacement) + p.post;
+      }
 
-      const category = document.getElementById('dbEditorCategory').value;
-      const collectionName = getEditorCollectionName();
-      const tb = document.getElementById('dbEditorTb').value;
-      const lesson = Number(document.getElementById('dbEditorLesson').value);
-      const list = document.getElementById('dbEditorList');
-      const status = document.getElementById('dbEditorStatus');
+      function thirdPerson(verb) {
+        if (verb === 'be') return 'is';
+        if (verb === 'have') return 'has';
+        if (verb === 'do') return 'does';
+        if (/[^aeiou]y$/i.test(verb)) return verb.slice(0, -1) + 'ies';
+        if (/(s|sh|ch|x|z|o)$/i.test(verb)) return verb + 'es';
+        return verb + 's';
+      }
 
-      if (!tb || !Number.isFinite(lesson)) return alert("교과서와 과를 선택해 주세요.");
+      const directMap = {
+        am:'are', is:'are', are:'is', was:'were', were:'was',
+        has:'have', have:'has', do:'does', does:'do',
+        a:'an', an:'a', this:'these', these:'this', that:'those', those:'that',
+        he:'him', him:'he', she:'her', her:'she', they:'them', them:'they',
+        we:'us', us:'we', i:'me', me:'i', my:'me', our:'us', their:'them'
+      };
 
-      status.innerText = "데이터를 불러오는 중입니다...";
-      list.innerHTML = "";
+      const modalSet = new Set(['can','could','will','would','should','must','may','might','shall']);
+      const baseVerbSet = new Set([
+        'be','have','do','go','come','make','take','see','know','get','give','find','think','use','work','play','read','write',
+        'eat','drink','help','learn','study','become','keep','feel','leave','put','mean','tell','ask','seem','try','call','need',
+        'want','like','look','start','move','live','believe','bring','happen','provide','include','continue','change','watch',
+        'follow','stop','create','speak','spend','grow','open','walk','win','teach','offer','remember','consider','appear','buy',
+        'wait','serve','send','build','stay','fall','cut','reach','understand'
+      ]);
 
-      try {
-        const docs = await getDbEditorDocuments();
-        if (docs.length === 0) {
-          status.innerText = `${tb} ${lesson}과에 저장된 데이터가 없습니다.`;
+      const ppToBase = {
+        been:'be', done:'do', gone:'go', seen:'see', made:'make', taken:'take', written:'write', known:'know', given:'give',
+        found:'find', thought:'think', used:'use', come:'come', become:'become', read:'read', built:'build', sent:'send',
+        kept:'keep', left:'leave', felt:'feel', told:'tell', brought:'bring', bought:'buy', spoken:'speak', grown:'grow',
+        understood:'understand'
+      };
+
+      function getCandidates(sentence) {
+        const words = String(sentence || '').split(/\s+/).filter(Boolean);
+        const cores = words.map(w => (coreParts(w)?.core || '').toLowerCase());
+        const candidates = [];
+        const usedIndex = new Set();
+
+        const add = (index, replacement, kind) => {
+          if (index < 0 || index >= words.length || usedIndex.has(index) || !coreParts(words[index])) return;
+          const original = (coreParts(words[index])?.core || '').toLowerCase();
+          if (!replacement || original === replacement.toLowerCase()) return;
+          usedIndex.add(index);
+          candidates.push({ index, replacement, kind });
+        };
+
+        cores.forEach((core, i) => {
+          if (directMap[core]) add(i, directMap[core], 'basic');
+        });
+
+        for (let i = 0; i < cores.length - 1; i++) {
+          const core = cores[i];
+          let j = i + 1;
+          if (cores[j] === 'not' && j + 1 < cores.length) j++;
+          const next = cores[j];
+          if (modalSet.has(core) && baseVerbSet.has(next)) add(j, thirdPerson(next), 'modal');
+          if ((core === 'do' || core === 'does' || core === 'did') && baseVerbSet.has(next)) add(j, thirdPerson(next), 'auxiliary');
+          if (core === 'to' && baseVerbSet.has(next)) add(j, thirdPerson(next), 'infinitive');
+          if ((core === 'have' || core === 'has' || core === 'had') && ppToBase[next]) add(j, ppToBase[next], 'perfect');
+        }
+
+        return { words, candidates };
+      }
+
+      function shuffled(items) {
+        return [...items].sort(() => Math.random() - 0.5);
+      }
+
+      function makeGrammarErrors(items, requestedCount) {
+        const working = items.map(item => ({ ...item, parsed: getCandidates(item.eng) }));
+        const bySentence = working.map((item, sentenceIndex) =>
+          item.parsed.candidates.map(candidate => ({ ...candidate, sentenceIndex }))
+        );
+        const selected = [];
+        const used = new Set();
+
+        shuffled([...bySentence.keys()]).forEach(sentenceIndex => {
+          if (selected.length >= requestedCount) return;
+          const pool = bySentence[sentenceIndex].filter(c => !used.has(`${sentenceIndex}:${c.index}`));
+          if (!pool.length) return;
+          const pick = pool[Math.floor(Math.random() * pool.length)];
+          selected.push(pick);
+          used.add(`${sentenceIndex}:${pick.index}`);
+        });
+
+        if (selected.length < requestedCount) {
+          const rest = shuffled(bySentence.flat().filter(c => !used.has(`${c.sentenceIndex}:${c.index}`)));
+          for (const candidate of rest) {
+            if (selected.length >= requestedCount) break;
+            selected.push(candidate);
+            used.add(`${candidate.sentenceIndex}:${candidate.index}`);
+          }
+        }
+
+        const available = bySentence.flat().length;
+        if (selected.length < requestedCount) return { ok: false, available };
+
+        selected.forEach(candidate => {
+          const parsed = working[candidate.sentenceIndex].parsed;
+          parsed.words[candidate.index] = replaceCore(parsed.words[candidate.index], candidate.replacement);
+        });
+
+        return {
+          ok: true,
+          items: working.map(item => ({ ...item, grammarText: item.parsed.words.join(' ') }))
+        };
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, ch => ({
+          '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+        }[ch]));
+      }
+
+      function renderGrammarPaper(dataList) {
+        const paper = doc.getElementById('paperArea');
+        const requested = parseInt(doc.getElementById('grammarErrorCount')?.value || '5');
+        if (!Number.isFinite(requested) || requested < 1 || requested > 20) {
+          win.alert('문법 오류 개수는 1~20개 사이로 입력해 주세요.');
           return;
         }
 
-        status.innerText = `${tb} ${lesson}과 ${docs.length}개 항목을 불러왔습니다. 수정 후 각 행의 [저장]을 누르세요.`;
-
-        docs.forEach((item, idx) => {
-          const card = document.createElement('div');
-          card.style.border = "1px solid #dbe3ee";
-          card.style.borderRadius = "7px";
-          card.style.padding = "10px";
-          card.style.marginBottom = "8px";
-          card.style.background = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
-
-          const grid = document.createElement('div');
-          grid.style.display = "grid";
-          grid.style.gridTemplateColumns = category === "sentence" ? "75px 1fr 1fr auto" : "75px 1fr 1fr auto";
-          grid.style.gap = "8px";
-          grid.style.alignItems = "center";
-
-          grid.appendChild(makeEditorInput("num", item.data.num ?? "", { type: "number" }));
-          if (category === "sentence") {
-            grid.appendChild(makeEditorInput("eng", item.data.eng || "", { multiline: true, rows: 2 }));
-            grid.appendChild(makeEditorInput("kor", item.data.kor || "", { multiline: true, rows: 2 }));
-          } else {
-            grid.appendChild(makeEditorInput("word", item.data.word || ""));
-            grid.appendChild(makeEditorInput("meaning", item.data.meaning || ""));
-          }
-
-          const buttons = document.createElement('div');
-          buttons.style.display = "flex";
-          buttons.style.gap = "6px";
-
-          const saveBtn = document.createElement('button');
-          saveBtn.type = "button";
-          saveBtn.innerText = "저장";
-          saveBtn.style.cssText = "padding:8px 10px;background:#059669;color:white;border:none;border-radius:5px;font-weight:bold;cursor:pointer;";
-          saveBtn.onclick = () => saveDbRecord(collectionName, item.id, card);
-
-          const deleteBtn = document.createElement('button');
-          deleteBtn.type = "button";
-          deleteBtn.innerText = "삭제";
-          deleteBtn.style.cssText = "padding:8px 10px;background:#dc2626;color:white;border:none;border-radius:5px;font-weight:bold;cursor:pointer;";
-          deleteBtn.onclick = () => deleteDbRecord(collectionName, item.id, item.data);
-
-          buttons.appendChild(saveBtn);
-          buttons.appendChild(deleteBtn);
-          grid.appendChild(buttons);
-          card.appendChild(grid);
-          list.appendChild(card);
-        });
-      } catch (err) {
-        status.innerText = "DB 데이터 로드 실패: " + err.message;
-      }
-    }
-
-    async function saveDbRecord(collectionName, docId, card) {
-      const category = document.getElementById('dbEditorCategory').value;
-      const numValue = Number(card.querySelector('[data-field="num"]').value);
-      if (!Number.isFinite(numValue) || numValue < 1) return alert("번호는 1 이상의 숫자로 입력해 주세요.");
-
-      const payload = { num: numValue };
-      if (category === "sentence") {
-        payload.eng = card.querySelector('[data-field="eng"]').value.trim();
-        payload.kor = card.querySelector('[data-field="kor"]').value.trim();
-        if (!payload.eng || !payload.kor) return alert("영어 문장과 한글 해석을 모두 입력해 주세요.");
-      } else {
-        payload.word = card.querySelector('[data-field="word"]').value.trim();
-        payload.meaning = card.querySelector('[data-field="meaning"]').value.trim();
-        if (!payload.word || !payload.meaning) return alert("영단어와 뜻을 모두 입력해 주세요.");
-      }
-
-      try {
-        await db.collection(collectionName).doc(docId).update(payload);
-        card.style.borderColor = "#16a34a";
-        document.getElementById('dbEditorStatus').innerText = "✅ 수정 내용을 저장했습니다.";
-        await loadDropdownsFromDB();
-      } catch (err) {
-        alert("수정 저장 실패: " + err.message);
-      }
-    }
-
-    async function deleteDbRecord(collectionName, docId, data) {
-      const label = data.eng || data.word || `번호 ${data.num ?? ""}`;
-      if (!confirm(`정말 이 항목을 삭제할까요?\n\n${label}`)) return;
-
-      const tb = document.getElementById('dbEditorTb').value;
-      const lesson = document.getElementById('dbEditorLesson').value;
-
-      try {
-        await db.collection(collectionName).doc(docId).delete();
-        await loadDropdownsFromDB();
-        await refreshDbEditorFilters(tb, lesson);
-        await loadDbEditor();
-      } catch (err) {
-        alert("삭제 실패: " + err.message);
-      }
-    }
-
-    async function renameDbTextbook() {
-      if (!auth.currentUser) return alert("관리자 로그인이 필요합니다.");
-
-      const oldTb = document.getElementById('dbEditorTb').value;
-      const currentLesson = document.getElementById('dbEditorLesson').value;
-      if (!oldTb) return alert("변경할 교과서를 선택해 주세요.");
-
-      const entered = prompt(
-        `교과서 이름을 변경합니다.\n\n현재 이름: ${oldTb}\n새 이름을 입력해 주세요.`,
-        oldTb
-      );
-      if (entered === null) return;
-
-      const newTb = entered.trim();
-      if (!newTb) return alert("새 교과서 이름을 입력해 주세요.");
-      if (newTb === oldTb) return alert("현재 이름과 같습니다.");
-
-      const collections = ["sentences", "words"];
-      const sourceDocs = [];
-      let targetCount = 0;
-
-      try {
-        for (const collectionName of collections) {
-          const sourceSnapshot = await db.collection(collectionName).where("tbCode", "==", oldTb).get();
-          sourceSnapshot.forEach(doc => sourceDocs.push({ collectionName, ref: doc.ref }));
-
-          const targetSnapshot = await db.collection(collectionName).where("tbCode", "==", newTb).get();
-          targetCount += targetSnapshot.size;
-        }
-      } catch (err) {
-        return alert("교과서 데이터 확인 실패: " + err.message);
-      }
-
-      if (sourceDocs.length === 0) {
-        return alert(`${oldTb} 이름으로 저장된 데이터를 찾지 못했습니다.`);
-      }
-
-      if (targetCount > 0) {
-        const mergeOk = confirm(
-          `⚠️ '${newTb}' 이름으로 이미 ${targetCount}개 데이터가 있습니다.\n\n` +
-          `이름을 변경하면 기존 '${newTb}' 데이터와 같은 교과서 이름으로 합쳐져 보입니다.\n` +
-          `그래도 계속할까요?`
-        );
-        if (!mergeOk) return;
-      }
-
-      const finalOk = confirm(
-        `교과서 이름을 변경할까요?\n\n` +
-        `${oldTb} → ${newTb}\n\n` +
-        `문장/지문과 단어 DB의 모든 과를 포함해 총 ${sourceDocs.length}개 데이터의 교과서 이름이 함께 변경됩니다.`
-      );
-      if (!finalOk) return;
-
-      try {
-        const chunkSize = 400;
-        for (let offset = 0; offset < sourceDocs.length; offset += chunkSize) {
-          const batch = db.batch();
-          sourceDocs.slice(offset, offset + chunkSize).forEach(item => {
-            batch.update(item.ref, { tbCode: newTb });
-          });
-          await batch.commit();
+        const result = makeGrammarErrors(dataList, requested);
+        if (!result.ok) {
+          win.alert(`선택한 범위에서는 확실하게 만들 수 있는 문법 오류가 ${result.available}개입니다. 범위를 늘리거나 오류 개수를 줄여 주세요.`);
+          return;
         }
 
-        if (document.getElementById('dbTb').value.trim() === oldTb) {
-          document.getElementById('dbTb').value = newTb;
-        }
-        if (document.getElementById('dbWordTb').value.trim() === oldTb) {
-          document.getElementById('dbWordTb').value = newTb;
-        }
+        paper.style.display = 'block';
+        paper.dataset.qtype = '5';
+        paper.innerHTML = '';
 
-        document.getElementById('dbEditorStatus').innerText = `✅ 교과서 이름을 '${oldTb}'에서 '${newTb}'로 변경했습니다.`;
-        await loadDropdownsFromDB();
-        await refreshDbEditorFilters(newTb, currentLesson);
-        await loadDbEditor();
-      } catch (err) {
-        alert("교과서 이름 변경 실패: " + err.message);
+        const topBar = doc.createElement('div');
+        topBar.style.overflow = 'hidden';
+        topBar.style.marginBottom = '5px';
+        const printBtn = doc.createElement('button');
+        printBtn.className = 'btn-print';
+        printBtn.textContent = '🖨️ 시험지 인쇄하기';
+        printBtn.onclick = () => win.print();
+        topBar.appendChild(printBtn);
+        paper.appendChild(topBar);
+
+        const brandStrip = doc.createElement('div');
+        brandStrip.className = 'yms-brand-strip';
+        brandStrip.innerHTML = '<div class="yms-brand-name">YMS <span>ENGLISH</span></div><div class="yms-test-type">GRAMMAR ERROR TEST</div>';
+        paper.appendChild(brandStrip);
+
+        const meta = doc.createElement('div');
+        meta.className = 'paper-meta';
+        meta.textContent = `${doc.getElementById('genTb').value}  ·  UNIT ${doc.getElementById('genLesson').value}`;
+        paper.appendChild(meta);
+
+        const header = doc.createElement('div');
+        header.className = 'paper-header-row';
+        header.innerHTML = `
+          <div class="paper-instruction">다음 글에는 문법상 잘못된 부분이 총 <b>${requested}곳</b> 있습니다. 잘못된 부분을 찾아 바르게 고치시오.</div>
+          <div class="student-info-box">
+            <span>날짜: <span class="info-item" style="width:90px;"></span></span>
+            <span>이름: <span class="info-item" style="width:90px;"></span></span>
+          </div>
+        `;
+        paper.appendChild(header);
+
+        const passage = doc.createElement('div');
+        passage.className = 'grammar-passage';
+        passage.innerHTML = result.items.map((item, idx) =>
+          `<span class="grammar-sentence"><span class="grammar-sentence-num">${idx + 1}.</span>${escapeHtml(item.grammarText || item.eng)}</span>`
+        ).join(' ');
+        paper.appendChild(passage);
+        paper.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-    }
 
-    async function deleteDbLesson() {
-      if (!auth.currentUser) return alert("관리자 로그인이 필요합니다.");
-
-      const category = document.getElementById('dbEditorCategory').value;
-      const collectionName = getEditorCollectionName();
-      const tb = document.getElementById('dbEditorTb').value;
-      const lesson = Number(document.getElementById('dbEditorLesson').value);
-      if (!tb || !Number.isFinite(lesson)) return alert("교과서와 과를 선택해 주세요.");
-
-      let docs;
-      try {
-        docs = await getDbEditorDocuments();
-      } catch (err) {
-        return alert("삭제할 데이터 확인 실패: " + err.message);
-      }
-
-      if (docs.length === 0) return alert("삭제할 데이터가 없습니다.");
-
-      const typeLabel = category === "sentence" ? "문장/지문" : "단어";
-      if (!confirm(`⚠️ ${tb} ${lesson}과의 ${typeLabel} ${docs.length}개를 모두 삭제할까요?\n\n이 작업은 되돌릴 수 없습니다.`)) return;
-
-      try {
-        const chunkSize = 400;
-        for (let offset = 0; offset < docs.length; offset += chunkSize) {
-          const batch = db.batch();
-          docs.slice(offset, offset + chunkSize).forEach(item => batch.delete(item.ref));
-          await batch.commit();
-        }
-
-        document.getElementById('dbEditorList').innerHTML = "";
-        document.getElementById('dbEditorStatus').innerText = `✅ ${tb} ${lesson}과 ${typeLabel} ${docs.length}개를 삭제했습니다.`;
-        await loadDropdownsFromDB();
-        await refreshDbEditorFilters(tb, "");
-      } catch (err) {
-        alert("과 전체 삭제 실패: " + err.message);
-      }
-    }
-
-    async function handleLogin() {
-      const emailEl = document.getElementById('loginEmail');
-      const pwEl = document.getElementById('loginPw');
-      const status = document.getElementById('adminLoginStatus');
-      const btn = document.getElementById('adminLoginBtn');
-      const email = emailEl ? emailEl.value.trim() : '';
-      const pw = pwEl ? pwEl.value : '';
-      if (!email || !pw) {
-        if (status) { status.textContent = '이메일과 비밀번호를 모두 입력해 주세요.'; status.style.color = '#dc2626'; }
-        return;
-      }
-      if (status) { status.textContent = '로그인 확인 중...'; status.style.color = '#64748b'; }
-      if (btn) btn.disabled = true;
-      try {
-        const cred = await auth.signInWithEmailAndPassword(email, pw);
-        if (status) { status.textContent = '로그인 성공'; status.style.color = '#16a34a'; }
-        document.getElementById('loginSection').style.display = 'none';
-        document.getElementById('adminSection').style.display = 'block';
-        document.getElementById('dbTabBtn').style.display = 'inline-block';
-        document.getElementById('userEmailText').innerText = cred.user.email || email;
-        await refreshDbEditorFilters();
-      } catch (err) {
-        const code = err && err.code ? err.code : 'unknown';
-        const msgMap = {
-          'auth/invalid-credential':'이메일 또는 비밀번호가 맞지 않습니다.',
-          'auth/user-not-found':'등록된 관리자 계정을 찾을 수 없습니다.',
-          'auth/wrong-password':'비밀번호가 맞지 않습니다.',
-          'auth/invalid-email':'이메일 형식이 올바르지 않습니다.',
-          'auth/operation-not-allowed':'Firebase Authentication에서 이메일/비밀번호 로그인을 사용 설정해야 합니다.',
-          'auth/too-many-requests':'로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.',
-          'auth/network-request-failed':'네트워크 연결을 확인해 주세요.'
+      const originalRenderPaper = typeof win.renderPaper === 'function' ? win.renderPaper.bind(win) : null;
+      if (originalRenderPaper) {
+        win.renderPaper = function(dataList, qType, category) {
+          if (category === 'sentence' && qType === '5') return renderGrammarPaper(dataList);
+          return originalRenderPaper(dataList, qType, category);
         };
-        if (status) {
-          status.textContent = (msgMap[code] || ('로그인 실패: ' + (err.message || code))) + ' [' + code + ']';
-          status.style.color = '#dc2626';
-        }
-      } finally {
-        if (btn) btn.disabled = false;
-      }
-    }
-
-    function handleLogout() { auth.signOut(); }
-
-    function cleanSentence(str) { return str.replace(/^\d+[\.\)\:]\s*/, '').trim(); }
-
-    async function saveBatchToFirebase() {
-      const tb = document.getElementById('dbTb').value.trim();
-      const lesson = parseInt(document.getElementById('dbLesson').value);
-      const startNum = parseInt(document.getElementById('dbStartNum').value);
-      const rawEng = document.getElementById('dbEng').value.trim();
-      const rawKor = document.getElementById('dbKor').value.trim();
-
-      if (!tb || !rawEng || !rawKor) return alert("모든 항목을 입력해 주세요.");
-
-      const engList = rawEng.split('\n').map(s => cleanSentence(s)).filter(s => s.length > 0);
-      const korList = rawKor.split('\n').map(s => cleanSentence(s)).filter(s => s.length > 0);
-
-      if (engList.length !== korList.length) return alert("영어와 한글의 문장 수가 일치하지 않습니다.");
-
-      const batch = db.batch();
-      engList.forEach((eng, idx) => {
-        const docRef = db.collection("sentences").doc();
-        batch.set(docRef, { tbCode: tb, lesson, num: startNum + idx, eng, kor: korList[idx], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-      });
-
-      try {
-        await batch.commit();
-        alert(`총 ${engList.length}개 문장이 성공적으로 DB에 저장되었습니다!`);
-        refreshDbEditorFilters(tb, lesson).catch(() => {});
-        document.getElementById('dbStartNum').value = startNum + engList.length;
-        document.getElementById('dbEng').value = ""; document.getElementById('dbKor').value = "";
-      } catch (err) { alert("저장 실패: " + err.message); }
-    }
-
-    function parseWordLine(line) {
-      const original = line;
-      let trimmed = line.replace(/\r/g, "").trim();
-      if (!trimmed) return null;
-
-      let word = "";
-      let meaning = "";
-
-      // 1) 엑셀 복사: TAB 기준
-      if (trimmed.includes("\t")) {
-        const parts = trimmed.split("\t").map(s => s.trim()).filter(s => s.length > 0);
-
-        // 번호 | 영어 | 뜻 형태도 지원
-        if (parts.length >= 3 && /^\d+[\.\)]?$/.test(parts[0])) {
-          word = parts[1];
-          meaning = parts.slice(2).join(" ");
-        } else if (parts.length >= 2) {
-          word = parts[0];
-          meaning = parts.slice(1).join(" ");
-        }
       }
 
-      // 2) TAB 없는 일반 텍스트: 첫 한글 위치 기준
-      if (!word || !meaning) {
-        const koreanIndex = trimmed.search(/[가-힣ㄱ-ㅎㅏ-ㅣ]/);
-        if (koreanIndex > 0) {
-          word = trimmed.substring(0, koreanIndex).trim();
-          meaning = trimmed.substring(koreanIndex).trim();
-        }
-      }
-
-      // 3) 영어와 뜻 사이 공백이 2칸 이상인 경우
-      if (!word || !meaning) {
-        const parts = trimmed.split(/\s{2,}/).map(s => s.trim()).filter(Boolean);
-        if (parts.length >= 2) {
-          word = parts[0];
-          meaning = parts.slice(1).join(" ");
-        }
-      }
-
-      // 4) 기존 /, : 형식도 지원
-      if (!word || !meaning) {
-        const parts = trimmed.split(/\s*[\/\:]\s*/).map(s => s.trim()).filter(Boolean);
-        if (parts.length >= 2) {
-          word = parts[0];
-          meaning = parts.slice(1).join(" ");
-        }
-      }
-
-      // 맨 앞 번호 제거: 1. apple / 1) apple
-      word = word.replace(/^\d+[\.\)]\s*/, "").trim();
-      meaning = meaning.trim();
-
-      if (!word || !meaning) {
-        return { ok: false, original };
-      }
-
-      return { ok: true, word, meaning, original };
-    }
-
-    function getParsedWordImport() {
-      const rawWords = document.getElementById('dbWords').value;
-      const lines = rawWords.split(/\r?\n/).filter(line => line.trim().length > 0);
-
-      const parsed = [];
-      const failed = [];
-
-      lines.forEach((line, index) => {
-        const result = parseWordLine(line);
-        if (result && result.ok) {
-          parsed.push({
-            word: result.word,
-            meaning: result.meaning,
-            sourceLine: index + 1
-          });
-        } else {
-          failed.push({
-            lineNumber: index + 1,
-            text: line
-          });
-        }
-      });
-
-      return { lines, parsed, failed };
-    }
-
-    function previewWordImport() {
-      const preview = document.getElementById('wordImportPreview');
-      if (!preview) return;
-
-      const { lines, parsed, failed } = getParsedWordImport();
-
-      if (lines.length === 0) {
-        preview.innerText = "붙여넣으면 인식된 단어 수가 표시됩니다.";
-        preview.style.color = "#475569";
-        return;
-      }
-
-      if (failed.length === 0) {
-        preview.innerText = `✅ 총 ${lines.length}줄 → ${parsed.length}개 단어 인식 완료`;
-        preview.style.color = "#059669";
-      } else {
-        preview.innerText = `⚠️ 총 ${lines.length}줄 중 ${parsed.length}개 인식 / ${failed.length}줄 확인 필요`;
-        preview.style.color = "#dc2626";
-      }
-    }
-
-    async function saveWordsToFirebase() {
-      const tb = document.getElementById('dbWordTb').value.trim();
-      const lesson = parseInt(document.getElementById('dbWordLesson').value);
-      const startNum = parseInt(document.getElementById('dbWordStartNum').value) || 1;
-      const saveBtn = document.getElementById('saveWordsBtn');
-
-      if (!tb || isNaN(lesson)) {
-        return alert("교과서 코드와 과 번호를 입력해 주세요.");
-      }
-
-      const { lines, parsed, failed } = getParsedWordImport();
-
-      if (lines.length === 0) {
-        return alert("단어 목록을 붙여넣어 주세요.");
-      }
-
-      if (failed.length > 0) {
-        const examples = failed
-          .slice(0, 8)
-          .map(item => `${item.lineNumber}줄: ${item.text}`)
-          .join("\n");
-
-        return alert(
-          `총 ${lines.length}줄 중 ${parsed.length}개만 인식되었습니다.\n` +
-          `인식하지 못한 ${failed.length}줄이 있어 저장을 중단합니다.\n\n` +
-          `확인할 줄:\n${examples}` +
-          (failed.length > 8 ? `\n... 외 ${failed.length - 8}줄` : "")
-        );
-      }
-
-      // 같은 영어+뜻이 입력 안에서 완전히 중복되면 1개만 저장
-      const seen = new Set();
-      const uniqueParsed = parsed.filter(item => {
-        const key = `${item.word.trim().toLowerCase()}\u0000${item.meaning.trim()}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-
-      if (uniqueParsed.length === 0) {
-        return alert("저장할 단어가 없습니다.");
-      }
-
-      if (saveBtn) {
-        saveBtn.disabled = true;
-        saveBtn.innerText = "저장 중... 잠시만 기다려 주세요";
-        saveBtn.style.opacity = "0.65";
-        saveBtn.style.cursor = "not-allowed";
-      }
-
-      try {
-        // 1. 현재 같은 교과서 + 같은 과에 존재하는 '기존 문서'를 먼저 기억한다.
-        //    새 저장이 실패하면 기존 데이터를 지우지 않기 위해 삭제는 나중에 한다.
-        const oldSnapshot = await db.collection("words")
-          .where("tbCode", "==", tb)
-          .where("lesson", "==", lesson)
-          .get();
-
-        const oldDocRefs = [];
-        oldSnapshot.forEach(doc => oldDocRefs.push(doc.ref));
-
-        // 2. 새 데이터 전체 저장
-        const importId = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-        const chunkSize = 400;
-
-        for (let offset = 0; offset < uniqueParsed.length; offset += chunkSize) {
-          const chunk = uniqueParsed.slice(offset, offset + chunkSize);
-          const batch = db.batch();
-
-          chunk.forEach((item, idx) => {
-            const globalIndex = offset + idx;
-            const docRef = db.collection("words").doc();
-
-            batch.set(docRef, {
-              tbCode: tb,
-              lesson,
-              num: startNum + globalIndex,
-              word: item.word,
-              meaning: item.meaning,
-              importId,
-              importSavedAt: firebase.firestore.FieldValue.serverTimestamp(),
-              createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-          });
-
-          await batch.commit();
-        }
-
-        // 3. 새 데이터 저장이 모두 성공한 뒤에만 기존 데이터 삭제
-        for (let offset = 0; offset < oldDocRefs.length; offset += chunkSize) {
-          const chunk = oldDocRefs.slice(offset, offset + chunkSize);
-          const batch = db.batch();
-
-          chunk.forEach(ref => batch.delete(ref));
-          await batch.commit();
-        }
-
-        document.getElementById('dbWordStartNum').value = startNum + uniqueParsed.length;
-        document.getElementById('dbWords').value = "";
-        previewWordImport();
-
-        // 화면 데이터도 DB에서 다시 불러오기
-        await loadDropdownsFromDB();
-        await refreshDbEditorFilters(tb, lesson);
-
-        const duplicateRemoved = parsed.length - uniqueParsed.length;
-        let msg = `✅ ${tb} ${lesson}과 단어를 새 데이터 ${uniqueParsed.length}개로 교체했습니다.`;
-        if (oldDocRefs.length > 0) {
-          msg += `\n기존 데이터 ${oldDocRefs.length}개는 삭제했습니다.`;
-        }
-        if (duplicateRemoved > 0) {
-          msg += `\n입력 중 완전히 같은 중복 ${duplicateRemoved}개는 제외했습니다.`;
-        }
-
-        alert(msg);
-
-      } catch (err) {
-        alert("저장/교체 실패: " + err.message);
-      } finally {
-        if (saveBtn) {
-          saveBtn.disabled = false;
-          saveBtn.innerText = "[단어 DB 저장 - 기존 데이터 교체]";
-          saveBtn.style.opacity = "1";
-          saveBtn.style.cursor = "pointer";
-        }
-      }
-    }
-
-    async function fetchAndGenerate() {
-      if (!isPinVerified) return alert("먼저 핸드폰 번호 뒷자리 인증을 완료해 주세요.");
-
-      const category = document.getElementById('genCategory').value;
-      const tb = document.getElementById('genTb').value;
-      const lesson = parseInt(document.getElementById('genLesson').value);
-      const qType = document.getElementById('genType').value;
-
-      if (!tb || isNaN(lesson)) return alert("지문 데이터를 올바르게 선택해 주세요.");
-
-      if (category === "sentence") {
-        const start = parseInt(document.getElementById('genStart').value);
-        const end = parseInt(document.getElementById('genEnd').value);
-
-        db.collection("sentences").where("tbCode", "==", tb).where("lesson", "==", lesson).get()
-          .then(snapshot => {
-            let map = new Map();
-            snapshot.forEach(doc => {
-              const data = doc.data();
-              if (data.num >= start && data.num <= end && !map.has(data.num)) map.set(data.num, data);
-            });
-            let list = Array.from(map.values()).sort((a, b) => a.num - b.num);
-            renderPaper(list, qType, "sentence");
-          });
-      } else {
-        const start = parseInt(document.getElementById('genWordStart').value);
-        const end = parseInt(document.getElementById('genWordEnd').value);
-
-        if (isNaN(start) || isNaN(end)) return alert("단어 시작/끝 번호를 선택해 주세요.");
-        if (start > end) return alert("시작 단어 번호는 끝 단어 번호보다 작거나 같아야 합니다.");
-
-        let latestWords;
-        try {
-          latestWords = await fetchLatestWordsFromDB(tb, lesson);
-        } catch (err) {
-          return alert("단어 DB를 새로 불러오지 못했습니다: " + err.message);
-        }
-
-        if (!latestWords || latestWords.length === 0) {
-          return alert(`${tb} ${lesson}과에 저장된 단어를 찾지 못했습니다. DB 관리에서 교과서 코드와 과 번호를 확인해 주세요.`);
-        }
-
-        if (!dbWordMap[tb]) dbWordMap[tb] = {};
-        dbWordMap[tb][lesson] = latestWords;
-
-        const availableList = getSortedWords(tb, lesson)
-          .filter(item => item.displayNum >= start && item.displayNum <= end);
-
-        if (availableList.length === 0) {
-          const allWords = getSortedWords(tb, lesson);
-          const minNum = allWords.length ? allWords[0].displayNum : 1;
-          const maxNum = allWords.length ? allWords[allWords.length - 1].displayNum : 1;
-          return alert(`선택한 ${start}~${end}번 범위에는 단어가 없습니다. ${lesson}과의 현재 단어 번호 범위는 ${minNum}~${maxNum}번입니다.`);
-        }
-
-        let requestedCount = parseInt(document.getElementById('genWordCount').value);
-
-        if (isNaN(requestedCount) || requestedCount < 1) {
-          return alert("출제 단어 수를 1개 이상 입력해 주세요.");
-        }
-
-        if (requestedCount > availableList.length) {
-          requestedCount = availableList.length;
-          document.getElementById('genWordCount').value = requestedCount;
-        }
-
-        // 선택한 범위 안에서 지정한 개수만큼 랜덤 출제
-        const list = shuffle(availableList).slice(0, requestedCount);
-
-        renderPaper(list, qType, "vocab");
-      }
-    }
-
-    function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
-
-    function renderPaper(dataList, qType, category) {
-      const paper = document.getElementById('paperArea');
-      paper.style.display = "block";
-      paper.dataset.qtype = qType;
-      paper.innerHTML = "";
-
-      if (dataList.length === 0) {
-        paper.innerHTML = "<p style='text-align:center;'>해당 조건의 문제 데이터가 없습니다.</p>";
-        return;
-      }
-
-      // 상단 인쇄 버튼
-      const topBar = document.createElement('div');
-      topBar.style.overflow = "hidden";
-      topBar.style.marginBottom = "5px";
-
-      const printBtn = document.createElement('button');
-      printBtn.className = "btn-print";
-      printBtn.innerText = "🖨️ 시험지 인쇄하기";
-      printBtn.onclick = () => window.print();
-      topBar.appendChild(printBtn);
-      paper.appendChild(topBar);
-
-      const examTb = document.getElementById('genTb').value;
-      const examLesson = document.getElementById('genLesson').value;
-      const testTypeLabels = {
-        "1": "SENTENCE · TRANSLATION",
-        "2": "WRITING TEST",
-        "3": "WORD ORDER TEST",
-        "4": "CLOZE TEST",
-        "w1": "VOCABULARY TEST",
-        "w2": "VOCABULARY TEST",
-        "w3": "VOCABULARY · MIXED"
-      };
-
-      const brandStrip = document.createElement('div');
-      brandStrip.className = "yms-brand-strip";
-
-      const brandName = document.createElement('div');
-      brandName.className = "yms-brand-name";
-      brandName.innerHTML = `YMS <span>ENGLISH</span>`;
-
-      const testType = document.createElement('div');
-      testType.className = "yms-test-type";
-      testType.innerText = testTypeLabels[qType] || "ENGLISH TEST";
-
-      brandStrip.appendChild(brandName);
-      brandStrip.appendChild(testType);
-      paper.appendChild(brandStrip);
-
-      const metaDiv = document.createElement('div');
-      metaDiv.className = "paper-meta";
-      metaDiv.innerText = `${examTb}  ·  UNIT ${examLesson}`;
-      paper.appendChild(metaDiv);
-
-      const instructions = {
-        "1": "다음 문장을 해석하시오.", "2": "다음 우리말을 영작하시오.",
-        "3": "주어진 단어를 올바르게 배열하시오.", "4": "다음 문장의 빈칸에 알맞은 단어를 쓰시오.",
-        "w1": "다음 영어 단어의 뜻을 쓰시오.", "w2": "다음 뜻에 알맞은 영어 단어를 쓰시오.", "w3": "다음 알맞은 영단어 또는 뜻을 쓰시오."
-      };
-
-      const headerRow = document.createElement('div');
-      headerRow.className = "paper-header-row";
-      
-      const titleDiv = document.createElement('div');
-      titleDiv.className = "paper-instruction";
-      titleDiv.innerText = instructions[qType] || "다음 문제를 푸시오.";
-
-      const studentInfo = document.createElement('div');
-      studentInfo.className = "student-info-box";
-      studentInfo.innerHTML = `
-        <span>날짜: <span class="info-item" style="width: 90px;"></span></span>
-        <span>이름: <span class="info-item" style="width: 90px;"></span></span>
-      `;
-
-      headerRow.appendChild(titleDiv);
-      headerRow.appendChild(studentInfo);
-      paper.appendChild(headerRow);
-
-      const blankRatio = parseFloat(document.getElementById('blankRatio').value) || 0.4;
-
-      // 문제 생성 컨테이너 (단어 시험일 경우 2열 그리드 클래스 추가)
-      const container = document.createElement('div');
-      container.className = (category === "vocab") ? "q-container vocab-grid" : "q-container sentence-grid";
-
-      dataList.forEach((item, idx) => {
-        const card = document.createElement('div');
-        card.className = "q-card";
-
-        const qNumberStr = `${idx + 1}. `;
-        let html = "";
-
-        if (category === "sentence") {
-          if (qType === "1") {
-            html = `<div class="q-text"><b>${qNumberStr}${item.eng}</b></div><div class="ans-space"></div>`;
-          } else if (qType === "2") {
-            html = `<div class="q-text"><b>${qNumberStr}${item.kor}</b></div><div class="ans-space"></div>`;
-          } else if (qType === "3") {
-            const words = shuffle(item.eng.replace(/[.,!?]/g, '').split(" ")).join(" / ");
-            html = `<div class="q-text" style="font-size:12.5px; color:#555; margin-bottom:2px;">${qNumberStr}뜻: ${item.kor}</div>
-                    <div class="word-box">[ ${words} ]</div><div class="ans-space"></div>`;
-          } else if (qType === "4") {
-            const words = item.eng.split(" ");
-            const blanked = words.map(w => (w.replace(/[^a-zA-Z]/g, '').length >= 2 && Math.random() < blankRatio) ? "_______" : w).join(" ");
-            html = `<div class="q-text"><b>${qNumberStr}${blanked}</b></div><div style="font-size:12px; color:#555; margin-top:-3px;">(뜻: ${item.kor})</div>`;
-          }
-        } else {
-          // 단어 시험 처리 (2열 전용)
-          let isShowEng = (qType === "w1") ? true : (qType === "w2" ? false : Math.random() > 0.5);
-          
-          if (isShowEng) {
-            html = `<div class="q-text"><b>${qNumberStr}${item.word}</b></div><div class="ans-space"></div>`;
-          } else {
-            html = `<div class="q-text"><b>${qNumberStr}${item.meaning}</b></div><div class="ans-space"></div>`;
-          }
-        }
-
-        card.innerHTML = html;
-        container.appendChild(card);
-      });
-
-      paper.appendChild(container);
-    }
+      installGrammarOption();
+      win.toggleBlankOption();
+    });
   </script>
 </body>
 </html>
