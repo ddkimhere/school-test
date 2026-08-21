@@ -12,37 +12,60 @@
 <body>
   <iframe id="appFrame" title="YMS Middle School Test Program"></iframe>
   <script>
+    const GRAMMAR_API_URL = 'https://yms-grammar-api.vercel.app/api/grammar';
     const frame = document.getElementById('appFrame');
     frame.src = 'legacy.html' + window.location.search + window.location.hash;
 
     frame.addEventListener('load', () => {
       const win = frame.contentWindow;
       const doc = frame.contentDocument;
-      if (!win || !doc || win.__ymsGrammarErrorInstalled) return;
-      win.__ymsGrammarErrorInstalled = true;
+      if (!win || !doc || win.__ymsGrammarAiInstalled) return;
+      win.__ymsGrammarAiInstalled = true;
 
       const style = doc.createElement('style');
       style.textContent = `
         .grammar-passage { font-size: 14px; line-height: 2.1; text-align: justify; word-break: keep-all; }
         .grammar-sentence { display: inline; margin-right: 5px; }
         .grammar-sentence-num { font-weight: 800; margin-right: 3px; }
+        .grammar-toolbar { display:flex; justify-content:flex-end; gap:8px; margin-bottom:10px; }
+        .grammar-answer-btn { background:#475569; color:#fff; font-weight:700; border:0; padding:8px 14px; border-radius:6px; cursor:pointer; font-family:inherit; }
+        .grammar-answer-panel { display:none; margin-top:18px; padding:14px 16px; border:1px solid #cbd5e1; border-radius:7px; background:#f8fafc; }
+        .grammar-answer-panel.show { display:block; }
+        .grammar-answer-title { font-size:14px; font-weight:900; margin-bottom:8px; }
+        .grammar-answer-item { font-size:12.5px; line-height:1.65; margin-bottom:5px; }
+        .grammar-ai-loading { text-align:center; padding:45px 10px; color:#475569; font-size:14px; font-weight:700; }
         @media print {
-          .paper[data-qtype="5"] .grammar-passage { font-size: 13.5px; line-height: 2.15; text-align: justify; }
+          .paper[data-qtype="5"] .grammar-passage { font-size:13.5px; line-height:2.15; text-align:justify; }
+          .grammar-answer-btn, .grammar-answer-panel { display:none !important; }
         }
       `;
       doc.head.appendChild(style);
 
       const blankCol = doc.getElementById('blankOptionCol');
       if (blankCol && !doc.getElementById('grammarErrorOptionCol')) {
-        const grammarCol = doc.createElement('div');
-        grammarCol.className = 'col';
-        grammarCol.id = 'grammarErrorOptionCol';
-        grammarCol.style.display = 'none';
-        grammarCol.innerHTML = `
+        const grammarCountCol = doc.createElement('div');
+        grammarCountCol.className = 'col';
+        grammarCountCol.id = 'grammarErrorOptionCol';
+        grammarCountCol.style.display = 'none';
+        grammarCountCol.innerHTML = `
           <label>문법 오류 개수</label>
-          <input type="number" id="grammarErrorCount" value="5" min="1" max="20" step="1">
+          <input type="number" id="grammarErrorCount" value="5" min="1" max="15" step="1">
         `;
-        blankCol.parentElement.appendChild(grammarCol);
+        blankCol.parentElement.appendChild(grammarCountCol);
+
+        const grammarDifficultyCol = doc.createElement('div');
+        grammarDifficultyCol.className = 'col';
+        grammarDifficultyCol.id = 'grammarDifficultyOptionCol';
+        grammarDifficultyCol.style.display = 'none';
+        grammarDifficultyCol.innerHTML = `
+          <label>문법 문제 난이도</label>
+          <select id="grammarDifficulty">
+            <option value="기본">기본</option>
+            <option value="중등 내신" selected>중등 내신</option>
+            <option value="고난도">고난도</option>
+          </select>
+        `;
+        blankCol.parentElement.appendChild(grammarDifficultyCol);
       }
 
       function installGrammarOption() {
@@ -52,21 +75,30 @@
         if (!type.querySelector('option[value="5"]')) {
           const option = doc.createElement('option');
           option.value = '5';
-          option.textContent = '5. 문법 오류 찾기';
+          option.textContent = '5. 문법 오류 찾기 (AI)';
           type.appendChild(option);
         }
       }
 
-      const originalToggle = typeof win.toggleBlankOption === 'function' ? win.toggleBlankOption.bind(win) : null;
+      const originalToggle = typeof win.toggleBlankOption === 'function'
+        ? win.toggleBlankOption.bind(win)
+        : null;
+
       win.toggleBlankOption = function() {
         if (originalToggle) originalToggle();
         const category = doc.getElementById('genCategory')?.value;
         const qType = doc.getElementById('genType')?.value;
-        const grammarCol = doc.getElementById('grammarErrorOptionCol');
-        if (grammarCol) grammarCol.style.display = (category === 'sentence' && qType === '5') ? 'block' : 'none';
+        const isGrammar = category === 'sentence' && qType === '5';
+        const grammarCountCol = doc.getElementById('grammarErrorOptionCol');
+        const grammarDifficultyCol = doc.getElementById('grammarDifficultyOptionCol');
+        if (grammarCountCol) grammarCountCol.style.display = isGrammar ? 'block' : 'none';
+        if (grammarDifficultyCol) grammarDifficultyCol.style.display = isGrammar ? 'block' : 'none';
       };
 
-      const originalUpdateLessonDropdown = typeof win.updateLessonDropdown === 'function' ? win.updateLessonDropdown.bind(win) : null;
+      const originalUpdateLessonDropdown = typeof win.updateLessonDropdown === 'function'
+        ? win.updateLessonDropdown.bind(win)
+        : null;
+
       if (originalUpdateLessonDropdown) {
         win.updateLessonDropdown = function() {
           const result = originalUpdateLessonDropdown(...arguments);
@@ -76,169 +108,16 @@
         };
       }
 
-      function coreParts(token) {
-        const m = String(token || '').match(/^([^A-Za-z]*)([A-Za-z]+)([^A-Za-z]*)$/);
-        return m ? { pre: m[1], core: m[2], post: m[3] } : null;
-      }
-
-      function preserveCase(original, replacement) {
-        if (original === original.toUpperCase()) return replacement.toUpperCase();
-        if (original[0] === original[0].toUpperCase()) return replacement[0].toUpperCase() + replacement.slice(1);
-        return replacement;
-      }
-
-      function replaceCore(token, replacement) {
-        const p = coreParts(token);
-        if (!p) return token;
-        return p.pre + preserveCase(p.core, replacement) + p.post;
-      }
-
-      function thirdPerson(verb) {
-        if (verb === 'be') return 'is';
-        if (verb === 'have') return 'has';
-        if (verb === 'do') return 'does';
-        if (/[^aeiou]y$/i.test(verb)) return verb.slice(0, -1) + 'ies';
-        if (/(s|sh|ch|x|z|o)$/i.test(verb)) return verb + 'es';
-        return verb + 's';
-      }
-
-      const directMap = {
-        am:'are', is:'are', are:'is', was:'were', were:'was',
-        has:'have', have:'has', do:'does', does:'do',
-        a:'an', an:'a', this:'these', these:'this', that:'those', those:'that',
-        he:'him', him:'he', she:'her', her:'she', they:'them', them:'they',
-        we:'us', us:'we', i:'me', me:'i', my:'me', our:'us', their:'them'
-      };
-
-      const modalSet = new Set(['can','could','will','would','should','must','may','might','shall']);
-      const baseVerbSet = new Set([
-        'be','have','do','go','come','make','take','see','know','get','give','find','think','use','work','play','read','write',
-        'eat','drink','help','learn','study','become','keep','feel','leave','put','mean','tell','ask','seem','try','call','need',
-        'want','like','look','start','move','live','believe','bring','happen','provide','include','continue','change','watch',
-        'follow','stop','create','speak','spend','grow','open','walk','win','teach','offer','remember','consider','appear','buy',
-        'wait','serve','send','build','stay','fall','cut','reach','understand'
-      ]);
-
-      const ppToBase = {
-        been:'be', done:'do', gone:'go', seen:'see', made:'make', taken:'take', written:'write', known:'know', given:'give',
-        found:'find', thought:'think', used:'use', come:'come', become:'become', read:'read', built:'build', sent:'send',
-        kept:'keep', left:'leave', felt:'feel', told:'tell', brought:'bring', bought:'buy', spoken:'speak', grown:'grow',
-        understood:'understand'
-      };
-
-      function getCandidates(sentence) {
-        const words = String(sentence || '').split(/\s+/).filter(Boolean);
-        const cores = words.map(w => (coreParts(w)?.core || '').toLowerCase());
-        const candidates = [];
-        const usedIndex = new Set();
-
-        const add = (index, replacement, kind) => {
-          if (index < 0 || index >= words.length || usedIndex.has(index) || !coreParts(words[index])) return;
-          const original = (coreParts(words[index])?.core || '').toLowerCase();
-          if (!replacement || original === replacement.toLowerCase()) return;
-          usedIndex.add(index);
-          candidates.push({ index, replacement, kind });
-        };
-
-        cores.forEach((core, i) => {
-          if (directMap[core]) add(i, directMap[core], 'basic');
-        });
-
-        for (let i = 0; i < cores.length - 1; i++) {
-          const core = cores[i];
-          let j = i + 1;
-          if (cores[j] === 'not' && j + 1 < cores.length) j++;
-          const next = cores[j];
-          if (modalSet.has(core) && baseVerbSet.has(next)) add(j, thirdPerson(next), 'modal');
-          if ((core === 'do' || core === 'does' || core === 'did') && baseVerbSet.has(next)) add(j, thirdPerson(next), 'auxiliary');
-          if (core === 'to' && baseVerbSet.has(next)) add(j, thirdPerson(next), 'infinitive');
-          if ((core === 'have' || core === 'has' || core === 'had') && ppToBase[next]) add(j, ppToBase[next], 'perfect');
-        }
-
-        return { words, candidates };
-      }
-
-      function shuffled(items) {
-        return [...items].sort(() => Math.random() - 0.5);
-      }
-
-      function makeGrammarErrors(items, requestedCount) {
-        const working = items.map(item => ({ ...item, parsed: getCandidates(item.eng) }));
-        const bySentence = working.map((item, sentenceIndex) =>
-          item.parsed.candidates.map(candidate => ({ ...candidate, sentenceIndex }))
-        );
-        const selected = [];
-        const used = new Set();
-
-        shuffled([...bySentence.keys()]).forEach(sentenceIndex => {
-          if (selected.length >= requestedCount) return;
-          const pool = bySentence[sentenceIndex].filter(c => !used.has(`${sentenceIndex}:${c.index}`));
-          if (!pool.length) return;
-          const pick = pool[Math.floor(Math.random() * pool.length)];
-          selected.push(pick);
-          used.add(`${sentenceIndex}:${pick.index}`);
-        });
-
-        if (selected.length < requestedCount) {
-          const rest = shuffled(bySentence.flat().filter(c => !used.has(`${c.sentenceIndex}:${c.index}`)));
-          for (const candidate of rest) {
-            if (selected.length >= requestedCount) break;
-            selected.push(candidate);
-            used.add(`${candidate.sentenceIndex}:${candidate.index}`);
-          }
-        }
-
-        const available = bySentence.flat().length;
-        if (selected.length < requestedCount) return { ok: false, available };
-
-        selected.forEach(candidate => {
-          const parsed = working[candidate.sentenceIndex].parsed;
-          parsed.words[candidate.index] = replaceCore(parsed.words[candidate.index], candidate.replacement);
-        });
-
-        return {
-          ok: true,
-          items: working.map(item => ({ ...item, grammarText: item.parsed.words.join(' ') }))
-        };
-      }
-
       function escapeHtml(value) {
         return String(value ?? '').replace(/[&<>"']/g, ch => ({
-          '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
         }[ch]));
       }
 
-      function renderGrammarPaper(dataList) {
-        const paper = doc.getElementById('paperArea');
-        const requested = parseInt(doc.getElementById('grammarErrorCount')?.value || '5');
-        if (!Number.isFinite(requested) || requested < 1 || requested > 20) {
-          win.alert('문법 오류 개수는 1~20개 사이로 입력해 주세요.');
-          return;
-        }
-
-        const result = makeGrammarErrors(dataList, requested);
-        if (!result.ok) {
-          win.alert(`선택한 범위에서는 확실하게 만들 수 있는 문법 오류가 ${result.available}개입니다. 범위를 늘리거나 오류 개수를 줄여 주세요.`);
-          return;
-        }
-
-        paper.style.display = 'block';
-        paper.dataset.qtype = '5';
-        paper.innerHTML = '';
-
-        const topBar = doc.createElement('div');
-        topBar.style.overflow = 'hidden';
-        topBar.style.marginBottom = '5px';
-        const printBtn = doc.createElement('button');
-        printBtn.className = 'btn-print';
-        printBtn.textContent = '🖨️ 시험지 인쇄하기';
-        printBtn.onclick = () => win.print();
-        topBar.appendChild(printBtn);
-        paper.appendChild(topBar);
-
+      function renderGrammarHeader(paper, requested) {
         const brandStrip = doc.createElement('div');
         brandStrip.className = 'yms-brand-strip';
-        brandStrip.innerHTML = '<div class="yms-brand-name">YMS <span>ENGLISH</span></div><div class="yms-test-type">GRAMMAR ERROR TEST</div>';
+        brandStrip.innerHTML = '<div class="yms-brand-name">YMS <span>ENGLISH</span></div><div class="yms-test-type">AI GRAMMAR ERROR TEST</div>';
         paper.appendChild(brandStrip);
 
         const meta = doc.createElement('div');
@@ -256,20 +135,121 @@
           </div>
         `;
         paper.appendChild(header);
+      }
+
+      function renderGrammarResult(result, requested) {
+        const paper = doc.getElementById('paperArea');
+        paper.style.display = 'block';
+        paper.dataset.qtype = '5';
+        paper.innerHTML = '';
+
+        const toolbar = doc.createElement('div');
+        toolbar.className = 'grammar-toolbar';
+
+        const answerBtn = doc.createElement('button');
+        answerBtn.type = 'button';
+        answerBtn.className = 'grammar-answer-btn';
+        answerBtn.textContent = '정답 보기';
+
+        const printBtn = doc.createElement('button');
+        printBtn.className = 'btn-print';
+        printBtn.style.float = 'none';
+        printBtn.style.marginBottom = '0';
+        printBtn.textContent = '🖨️ 시험지 인쇄하기';
+        printBtn.onclick = () => win.print();
+
+        toolbar.appendChild(answerBtn);
+        toolbar.appendChild(printBtn);
+        paper.appendChild(toolbar);
+
+        renderGrammarHeader(paper, requested);
 
         const passage = doc.createElement('div');
         passage.className = 'grammar-passage';
-        passage.innerHTML = result.items.map((item, idx) =>
-          `<span class="grammar-sentence"><span class="grammar-sentence-num">${idx + 1}.</span>${escapeHtml(item.grammarText || item.eng)}</span>`
+        passage.innerHTML = result.sentences.map((item, idx) =>
+          `<span class="grammar-sentence"><span class="grammar-sentence-num">${idx + 1}.</span>${escapeHtml(item.question)}</span>`
         ).join(' ');
         paper.appendChild(passage);
+
+        const answerPanel = doc.createElement('div');
+        answerPanel.className = 'grammar-answer-panel';
+        const errors = result.sentences.filter(item => item.hasError);
+        answerPanel.innerHTML = `
+          <div class="grammar-answer-title">교사용 정답 · ${escapeHtml(result.difficulty || '')}</div>
+          ${errors.map(item => `
+            <div class="grammar-answer-item">
+              <b>${item.number}번</b> ${escapeHtml(item.wrong)} → <b>${escapeHtml(item.correct)}</b>
+              &nbsp;[${escapeHtml(item.grammarPoint)}]&nbsp; ${escapeHtml(item.reason)}
+            </div>
+          `).join('')}
+        `;
+        paper.appendChild(answerPanel);
+
+        answerBtn.onclick = () => {
+          answerPanel.classList.toggle('show');
+          answerBtn.textContent = answerPanel.classList.contains('show') ? '정답 숨기기' : '정답 보기';
+        };
+
         paper.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
-      const originalRenderPaper = typeof win.renderPaper === 'function' ? win.renderPaper.bind(win) : null;
+      async function generateGrammarPaper(dataList) {
+        const requested = parseInt(doc.getElementById('grammarErrorCount')?.value || '5', 10);
+        const difficulty = doc.getElementById('grammarDifficulty')?.value || '중등 내신';
+        const maxErrors = Math.min(15, dataList.length);
+
+        if (!Number.isInteger(requested) || requested < 1 || requested > maxErrors) {
+          win.alert(`문법 오류 개수는 1~${maxErrors}개 사이로 입력해 주세요.`);
+          return;
+        }
+
+        const paper = doc.getElementById('paperArea');
+        paper.style.display = 'block';
+        paper.dataset.qtype = '5';
+        paper.innerHTML = '<div class="grammar-ai-loading">AI가 지문을 분석해서 내신형 문법 오류 문제를 만들고 있습니다...</div>';
+        paper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        try {
+          const response = await fetch(GRAMMAR_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sentences: dataList.map(item => ({ num: item.num, eng: item.eng })),
+              errorCount: requested,
+              difficulty
+            })
+          });
+
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(result.error || `API 오류 (${response.status})`);
+          }
+          if (!Array.isArray(result.sentences)) {
+            throw new Error('AI 응답 형식이 올바르지 않습니다.');
+          }
+
+          renderGrammarResult(result, requested);
+        } catch (error) {
+          console.error(error);
+          paper.innerHTML = `
+            <div class="grammar-ai-loading" style="color:#dc2626;">
+              문법 문제 생성에 실패했습니다.<br>
+              <span style="font-size:12px;font-weight:500;">${escapeHtml(error.message || '잠시 후 다시 시도해 주세요.')}</span>
+            </div>
+          `;
+        }
+      }
+
+      const originalRenderPaper = typeof win.renderPaper === 'function'
+        ? win.renderPaper.bind(win)
+        : null;
+
       if (originalRenderPaper) {
         win.renderPaper = function(dataList, qType, category) {
-          if (category === 'sentence' && qType === '5') return renderGrammarPaper(dataList);
+          if (category === 'sentence' && qType === '5') {
+            generateGrammarPaper(dataList);
+            return;
+          }
           return originalRenderPaper(dataList, qType, category);
         };
       }
